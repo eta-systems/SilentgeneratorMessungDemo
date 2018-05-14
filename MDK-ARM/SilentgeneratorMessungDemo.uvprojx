@@ -336,7 +336,7 @@
               <MiscControls>--C99 --cpp</MiscControls>
               <Define>USE_HAL_DRIVER,STM32F373xC</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;../Drivers/STM32F3xx_HAL_Driver/Inc;../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F3xx/Include;../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;  ../Drivers/STM32F3xx_HAL_Driver/Inc;  ../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy;  ../Drivers/CMSIS/Device/ST/STM32F3xx/Include;  ../Drivers/CMSIS/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -401,9 +401,6 @@
               <FilePath>..\Src\MAX7313.cpp</FilePath>
             </File>
           </Files>
-        </Group>
-        <Group>
-          <GroupName>::CMSIS</GroupName>
         </Group>
         <Group>
           <GroupName>Drivers/STM32F3xx_HAL_Driver</GroupName>
@@ -529,6 +526,9 @@
               <FilePath>startup_stm32f373xc.s</FilePath>
             </File>
           </Files>
+        </Group>
+        <Group>
+          <GroupName>::CMSIS</GroupName>
         </Group>
       </Groups>
     </Target>
