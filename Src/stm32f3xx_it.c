@@ -38,14 +38,6 @@
 /* USER CODE BEGIN 0 */
 #include "max7313.h"
 extern MAX7313 ioDriver_2;
-extern MAX7313Input  Button_SW4;
-extern MAX7313Input  Button_SW3;
-extern MAX7313Input  Button_SW2;
-extern MAX7313Input  Button_SW1;
-extern MAX7313Output LED_Bat_60proz;
-extern MAX7313Output LED_Bat_70proz;
-extern MAX7313Output LED_Bat_80proz;
-extern MAX7313Output LED_Bat_90proz;
 extern uint8_t interrupt_val;
 extern uint8_t led_mode;
 /* USER CODE END 0 */
@@ -202,17 +194,17 @@ void EXTI9_5_IRQHandler(void)
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
 	  if(__HAL_GPIO_EXTI_GET_FLAG(Interrupt_HMI2_Pin)){
-			ioDriver_2.clearInterrupt();
-			if(!Button_SW1.read())
+			MAX7313_Interrupt_Clear(&ioDriver_2);
+			if(!MAX7313_Pin_Read(&ioDriver_2, 1))
 				led_mode = 0;
 			
-			if(!Button_SW2.read())
+			if(!MAX7313_Pin_Read(&ioDriver_2, 2))
 				led_mode = 1;
 			
-			if(!Button_SW3.read())
+			if(!MAX7313_Pin_Read(&ioDriver_2, 3))
 				led_mode = 2;
 			
-			if(!Button_SW4.read())
+			if(!MAX7313_Pin_Read(&ioDriver_2, 4))
 				led_mode = 3;
 			
 		}

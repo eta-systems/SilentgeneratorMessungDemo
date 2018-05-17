@@ -42,6 +42,7 @@
 /* USER CODE BEGIN Includes */
 #include "max7313.h"
 #include "string.h"
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -80,49 +81,45 @@ static void MX_USART3_UART_Init(void);
 #define MAX7313_1 0x42        // 100 0010
 #define MAX7313_2 0x44        // 100 0100
 
-MAX7313 ioDriver_1(&hi2c1, MAX7313_1);
-MAX7313 ioDriver_2(&hi2c1, MAX7313_2);
-
-MAX7313Output LED_Bat_0proz  (&ioDriver_2, 7, 0);
-MAX7313Output LED_Bat_10proz (&ioDriver_2, 8, 0);
-MAX7313Output LED_Bat_20proz (&ioDriver_2, 9, 0);
-MAX7313Output LED_Bat_30proz (&ioDriver_2,10, 0);
-MAX7313Output LED_Bat_40proz (&ioDriver_2,14, 0);
-MAX7313Output LED_Bat_50proz (&ioDriver_2,15, 0);
-MAX7313Output LED_Bat_60proz (&ioDriver_1, 8, 0);
-MAX7313Output LED_Bat_70proz (&ioDriver_1, 9, 0);
-MAX7313Output LED_Bat_80proz (&ioDriver_1,13, 0);
-MAX7313Output LED_Bat_90proz (&ioDriver_1,14, 0);
-MAX7313Output LED_Bat_100proz(&ioDriver_1, 4, 0);
-MAX7313Output LED_Bat_110proz(&ioDriver_1, 1, 0);
-MAX7313Input  Button_SW4(&ioDriver_2, 1);
-MAX7313Input  Button_SW3(&ioDriver_2, 2);
-MAX7313Input  Button_SW2(&ioDriver_2, 3);
-MAX7313Input  Button_SW1(&ioDriver_2, 4);
+MAX7313 ioDriver_1;
+MAX7313 ioDriver_2;
 
 volatile uint8_t interrupt_val = 0;
 volatile uint8_t led_mode = 0;
 uint8_t laufvariable = 0;
 
-static void set_all_leds(uint8_t val){
-	LED_Bat_0proz.setIntensity(val);
-	LED_Bat_10proz.setIntensity(val);
-	LED_Bat_20proz.setIntensity(val);
-	LED_Bat_30proz.setIntensity(val);
-	LED_Bat_40proz.setIntensity(val);
-	LED_Bat_50proz.setIntensity(val);
-	LED_Bat_60proz.setIntensity(val);
-	LED_Bat_70proz.setIntensity(val);
-	LED_Bat_80proz.setIntensity(val);
-	LED_Bat_90proz.setIntensity(val);
-	LED_Bat_100proz.setIntensity(val);
-	LED_Bat_110proz.setIntensity(val);
-	return;
+const uint8_t battery_Leds[12] = {7, 8, 9, 10, 14, 15, 8, 9, 13, 14, 4, 1};
+
+void set_all_leds(uint8_t val){
+	
+	for(uint8_t i=0; i<12; i++){
+		MAX7313_Pin_Write( ( (i/2 >= 3) ? (&ioDriver_1):(&ioDriver_2) ) , battery_Leds[i], val);
+	}
 }
 
-static void debugPrint(char _out[]){ 
-	HAL_UART_Transmit(&huart3, (uint8_t *) _out, strlen(_out), 10); 
+/* PRINTF REDIRECT to UART BEGIN */
+// @see    http://www.keil.com/forum/60531/
+// @see    https://stackoverflow.com/questions/45535126/stm32-printf-redirect
+struct __FILE{
+  int handle;
+  /* Whatever you require here. If the only file you are using is */
+  /* standard output using printf() for debugging, no file handling */
+  /* is required. */
+};
+
+FILE __stdout;
+
+int fputc(int ch, FILE *f){
+  /* Your implementation of fputc(). */
+	HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+  return ch;
 }
+
+int ferror(FILE *f){
+  /* Your implementation of ferror(). */
+  return 0;
+}
+/* PRINTF REDIRECT to UART END */
 
 /* USER CODE END 0 */
 
@@ -159,11 +156,29 @@ int main(void)
   MX_USART3_UART_Init();
 
   /* USER CODE BEGIN 2 */
-	ioDriver_1.begin();
-	ioDriver_2.begin();
-	ioDriver_2.enableInterrupt();
+	ioDriver_1 = new_MAX7313();
+	ioDriver_2 = new_MAX7313();
+	MAX7313_Pin_Mode(&ioDriver_2, 7, PORT_OUTPUT);  //  0%
+	MAX7313_Pin_Mode(&ioDriver_2, 8, PORT_OUTPUT);  // 10%
+	MAX7313_Pin_Mode(&ioDriver_2, 9, PORT_OUTPUT);  // 20%
+	MAX7313_Pin_Mode(&ioDriver_2,10, PORT_OUTPUT);  // 30%
+	MAX7313_Pin_Mode(&ioDriver_2,14, PORT_OUTPUT);  // 40%
+	MAX7313_Pin_Mode(&ioDriver_2,15, PORT_OUTPUT);  // 50%
+	MAX7313_Pin_Mode(&ioDriver_1, 8, PORT_OUTPUT);  // 60%
+	MAX7313_Pin_Mode(&ioDriver_1, 9, PORT_OUTPUT);  // 70%
+	MAX7313_Pin_Mode(&ioDriver_1,13, PORT_OUTPUT);  // 80%
+	MAX7313_Pin_Mode(&ioDriver_1,14, PORT_OUTPUT);  // 90%
+	MAX7313_Pin_Mode(&ioDriver_1, 4, PORT_OUTPUT);  // 100%
+	MAX7313_Pin_Mode(&ioDriver_1, 1, PORT_OUTPUT);  // 110%
 	
-	LED_Bat_0proz.setIntensity(1);
+	MAX7313_Pin_Mode(&ioDriver_2, 1, PORT_INPUT);
+	MAX7313_Pin_Mode(&ioDriver_2, 2, PORT_INPUT);
+	MAX7313_Pin_Mode(&ioDriver_2, 3, PORT_INPUT);
+	MAX7313_Pin_Mode(&ioDriver_2, 4, PORT_INPUT);
+	
+	MAX7313_Init(&ioDriver_1, &hi2c1, MAX7313_1);
+	MAX7313_Init(&ioDriver_2, &hi2c1, MAX7313_2);
+	MAX7313_Interrupt_Enable(&ioDriver_2);
 
   /* USER CODE END 2 */
 
@@ -184,27 +199,29 @@ int main(void)
 		
 		switch(led_mode){
 			case 0:							// 1 LED blinkt
-				set_all_leds(0);
+				set_all_leds(15);
 				if(laufvariable > 10)
-					LED_Bat_110proz.setIntensity(15);
+					MAX7313_Pin_Write(&ioDriver_1, 14, 0);
 				break;
 			case 1:							// alle LEDs blinken
 				if(laufvariable > 10)
-					set_all_leds(15);
-				else
 					set_all_leds(0);
+				else
+					set_all_leds(15);
 				break;
 			case 2: 						// alle LEDs ein
-				set_all_leds(15);
+				set_all_leds(0);
 				break;
 			case 3:							// alle LEDs aus
-				set_all_leds(0);
+				set_all_leds(15);
 				break;
 			default:
 				led_mode = 0;
 		}
 		HAL_Delay(100);
-		debugPrint("\n");
+		
+		printf("wert: %d\n", laufvariable);
+		
 		laufvariable ++;
 		if(laufvariable > 20)
 			laufvariable = 0;

@@ -1,17 +1,14 @@
 
 /**
-  * @note 		STILL IN DEVELOPMENT
-  * @file 		max3713.cpp
+  * @file 		max3713.h
   * @author 	Simon Burkhardt github.com/mnemocron
   * @copyright 	MIT license
-  * @date 		19 Jan 2018
+  * @date 		17.05.2018
   * @brief 		Object oriented C++ library for the MAX7313 port expander for STM32 HAL.
   * @details
   * @see 		github.com/mnemocron
   * @see 		https://datasheets.maximintegrated.com/en/ds/MAX7313.pdf
   * @see 		https://forum.arduino.cc/index.php?topic=9682.0
-  *
-  * @todo 		documentation of individual methods
   */
 
 #ifndef _MAX7313_H
@@ -26,6 +23,10 @@
 
 #ifndef STM32F3XX_HAL_I2C_H
 #include "stm32f3xx_hal_i2c.h"
+#endif
+
+#ifndef MAIN_H
+#include "main.h"
 #endif
 
 /**
@@ -52,48 +53,42 @@
 #define MAX7313_OUT_INT_15_14       	0x17
 #define MAX7313_NO_PORT    	        	0x88 		// @todo check that this address is not within the address space of MAX7313 OR add check for NO_PORT befor writing to i2c bus
 
-class MAX7313
-{
-	private:
-		uint16_t devAddress;
-		I2C_HandleTypeDef *wireIface;
-		uint8_t conf;
-	public:
-		uint8_t intensity[16];
-		uint8_t ioconfig[2];
-		uint8_t begin();
-	
-		MAX7313(I2C_HandleTypeDef *wireIface, uint16_t address);
-		uint8_t write8(uint8_t reg, uint8_t val);
-		uint8_t read8(uint8_t reg, uint8_t *val);
-		uint8_t enableInterrupt();
-		uint8_t disableInterrupt();
-		uint8_t clearInterrupt();
+#define PORT_OUTPUT 0
+#define PORT_INPUT  1
+
+#define __max7313_get_regmask(port) (1<<(port%8))
+#define __max7313_get_input_reg(port) ((port < 7) ? MAX7313_READ_IN_00_07 : MAX7313_READ_IN_08_15)
+#define __max7313_get_output_reg(port) __max7313_output_registers[port/2]
+
+static const uint8_t __max7313_output_registers[9] = {
+  MAX7313_OUT_INT_01_00,
+  MAX7313_OUT_INT_03_02,
+  MAX7313_OUT_INT_05_04,
+  MAX7313_OUT_INT_07_06,
+  MAX7313_OUT_INT_09_08,
+  MAX7313_OUT_INT_11_10,
+  MAX7313_OUT_INT_13_12,
+  MAX7313_OUT_INT_15_14,
+  MAX7313_OUT_INT_MA_16
 };
 
-class MAX7313Output
-{
-	private:
-		MAX7313 *chip;
-		uint8_t port;
-		uint8_t ioreg;
-		uint8_t regmask;
-		uint8_t polarity;
-	public:
-		MAX7313Output(MAX7313 *chip, uint8_t port, uint8_t polarity);
-		uint8_t setIntensity(uint8_t intensity);
-};
+typedef struct {
+	uint16_t devAddress;
+	I2C_HandleTypeDef *wireIface;
+	uint8_t conf;
+	uint8_t intensity[16];
+	uint8_t ioconfig[2];
+} MAX7313;
 
-class MAX7313Input
-{
-	private:
-		MAX7313 *chip;
-		uint8_t port;
-		uint8_t ioreg;
-		uint8_t regmask;
-	public:
-		MAX7313Input(MAX7313 *chip, uint8_t port);
-		uint8_t read();
-};
+MAX7313 new_MAX7313               (void);
+uint8_t MAX7313_Write8            (MAX7313*, uint8_t, uint8_t);
+uint8_t MAX7313_Read8             (MAX7313*, uint8_t, uint8_t*);
+uint8_t MAX7313_Init              (MAX7313*, I2C_HandleTypeDef*, uint16_t);
+void    MAX7313_Pin_Mode          (MAX7313*, uint8_t, uint8_t);
+uint8_t MAX7313_Pin_Write         (MAX7313*, uint8_t, uint8_t);
+uint8_t MAX7313_Pin_Read          (MAX7313*, uint8_t);
+uint8_t MAX7313_Interrupt_Enable  (MAX7313*);
+uint8_t MAX7313_Interrupt_Disable (MAX7313*);
+uint8_t MAX7313_Interrupt_Clear   (MAX7313*);
 
 #endif
