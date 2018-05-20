@@ -58,13 +58,10 @@
 #define Solar_Voltage_GPIO_Port GPIOA
 #define Stromverbrauch_DCDC_Pin GPIO_PIN_1
 #define Stromverbrauch_DCDC_GPIO_Port GPIOA
-#define Spannungsmessung_Batterie_Pin GPIO_PIN_4
-#define Spannungsmessung_Batterie_GPIO_Port GPIOA
+#define Mess_V_Bat_Pin GPIO_PIN_4
+#define Mess_V_Bat_GPIO_Port GPIOA
 #define Mess_V_USB_Pin GPIO_PIN_5
 #define Mess_V_USB_GPIO_Port GPIOA
-#define Temp_Set_Pin GPIO_PIN_6
-#define Temp_Set_GPIO_Port GPIOA
-#define Temp_Set_EXTI_IRQn EXTI9_5_IRQn
 #define SHD_MPPT_Pin GPIO_PIN_0
 #define SHD_MPPT_GPIO_Port GPIOB
 #define Fault_MPPT_Pin GPIO_PIN_1

@@ -47,6 +47,9 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
+
 I2C_HandleTypeDef hi2c1;
 
 SPI_HandleTypeDef hspi2;
@@ -59,18 +62,20 @@ PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+uint32_t ADC_Buf[8];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USB_PCD_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -148,12 +153,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_SPI2_Init();
   MX_USB_PCD_Init();
   MX_USART3_UART_Init();
+  MX_ADC1_Init();
 
   /* USER CODE BEGIN 2 */
 	ioDriver_1 = new_MAX7313();
@@ -179,7 +186,9 @@ int main(void)
 	MAX7313_Init(&ioDriver_1, &hi2c1, MAX7313_1);
 	MAX7313_Init(&ioDriver_2, &hi2c1, MAX7313_2);
 	MAX7313_Interrupt_Enable(&ioDriver_2);
-
+	
+	HAL_ADC_Start_DMA(&hadc1, ADC_Buf, 7);
+	HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -220,7 +229,10 @@ int main(void)
 		}
 		HAL_Delay(100);
 		
-		printf("wert: %d\n", laufvariable);
+		// Analog Werte an USART3 printen
+		// PA0 - PA1 - PA4 - PA5 - TempInt - VrefInt - VBatInt
+		printf("Solar: %04i \tStrom: %04i \tVBat: %04i \tVUSB: %04i \tTemp: %04i \tVref: %04i \t(VBat: %04i)\n", \
+		ADC_Buf[0], ADC_Buf[1], ADC_Buf[2], ADC_Buf[3], ADC_Buf[4], ADC_Buf[5], ADC_Buf[6]);
 		
 		laufvariable ++;
 		if(laufvariable > 20)
@@ -270,12 +282,14 @@ void SystemClock_Config(void)
 
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_USART1
                               |RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_USART3
-                              |RCC_PERIPHCLK_I2C1;
+                              |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_ADC1;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.Usart3ClockSelection = RCC_USART3CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
   PeriphClkInit.USBClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
+  PeriphClkInit.Adc1ClockSelection = RCC_ADC1PCLK2_DIV4;
+
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -291,6 +305,92 @@ void SystemClock_Config(void)
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
+
+/* ADC1 init function */
+static void MX_ADC1_Init(void)
+{
+
+  ADC_ChannelConfTypeDef sConfig;
+
+    /**Common config 
+    */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 7;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = 2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Rank = 3;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_5;
+  sConfig.Rank = 4;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+  sConfig.Rank = 5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_VREFINT;
+  sConfig.Rank = 6;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_VBAT;
+  sConfig.Rank = 7;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
 }
 
 /* I2C1 init function */
@@ -434,12 +534,31 @@ static void MX_USB_PCD_Init(void)
 
 }
 
+/** 
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+}
+
 /** Configure pins as 
         * Analog 
         * Input 
         * Output
         * EVENT_OUT
         * EXTI
+     PA0   ------> SharedAnalog_PA0
+     PA1   ------> SharedAnalog_PA1
+     PA4   ------> SharedAnalog_PA4
+     PA5   ------> SharedAnalog_PA5
 */
 static void MX_GPIO_Init(void)
 {
@@ -479,17 +598,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : Solar_Voltage_Pin Stromverbrauch_DCDC_Pin Spannungsmessung_Batterie_Pin Mess_V_USB_Pin */
-  GPIO_InitStruct.Pin = Solar_Voltage_Pin|Stromverbrauch_DCDC_Pin|Spannungsmessung_Batterie_Pin|Mess_V_USB_Pin;
+  /*Configure GPIO pins : Solar_Voltage_Pin Stromverbrauch_DCDC_Pin Mess_V_Bat_Pin Mess_V_USB_Pin */
+  GPIO_InitStruct.Pin = Solar_Voltage_Pin|Stromverbrauch_DCDC_Pin|Mess_V_Bat_Pin|Mess_V_USB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : Temp_Set_Pin */
-  GPIO_InitStruct.Pin = Temp_Set_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pin : PA6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(Temp_Set_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SHD_MPPT_Pin EN2_VccS_Pin _5V_Power_On_Pin */
   GPIO_InitStruct.Pin = SHD_MPPT_Pin|EN2_VccS_Pin|_5V_Power_On_Pin;
