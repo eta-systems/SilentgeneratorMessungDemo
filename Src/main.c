@@ -102,6 +102,36 @@ void set_all_leds(uint8_t val){
 	}
 }
 
+uint32_t VREF1V23(){
+	return ADC_Buf[5];
+}
+
+float ADC2Volt(uint32_t adc_val){
+	/** ADC Values vs. Voltage
+	1960      1.64024
+	1790      1.49625
+	1525      1.27725
+	1180      1.99107
+ (0         0.00000)
+	*/
+	return (float)adc_val * (1.64024f / 1960.0f);
+}
+
+float TEMPIntCelsius(float Vtemp){
+	// STM32F373 datasheet - chapter 6.3.20 (p.105)
+	
+	// float V25typ = 1.43;     // V
+	// float Vslope = 0.0043;   // V/°C
+	// float Tslope = 1.0/Vslope;
+	// float Toffset = 25.0 - V25typ*Tslope;
+	
+	// #define TEMP110_CAL_VALUE (((uint16_t*)((uint32_t)0x1FFFF7C2 ))
+  // #define TEMP30_CAL_VALUE  (((uint16_t*)((uint32_t)0x1FFFF7B8 ))
+	// float temperature = (float)((110.0f - 30.0f) / ((float)(*TEMP110_CAL_VALUE) - (float)(*TEMP30_CAL_VALUE)) * ((float)ADC_Buf[4] - (float)(*TEMP30_CAL_VALUE)) + 30.0f);
+	float temperature = (float)(((Vtemp*1000) - 1430) / (4.3f) + 25.0f);
+	return temperature;
+}
+
 /* PRINTF REDIRECT to UART BEGIN */
 // @see    http://www.keil.com/forum/60531/
 // @see    https://stackoverflow.com/questions/45535126/stm32-printf-redirect
@@ -163,6 +193,7 @@ int main(void)
   MX_ADC1_Init();
 
   /* USER CODE BEGIN 2 */
+		HAL_Delay(1000);
 	ioDriver_1 = new_MAX7313();
 	ioDriver_2 = new_MAX7313();
 	MAX7313_Pin_Mode(&ioDriver_2, 7, PORT_OUTPUT);  //  0%
@@ -209,8 +240,12 @@ int main(void)
 		switch(led_mode){
 			case 0:							// 1 LED blinkt
 				set_all_leds(15);
-				if(laufvariable > 10)
+				if(laufvariable > 10){
 					MAX7313_Pin_Write(&ioDriver_1, 14, 0);
+					HAL_GPIO_WritePin(USBPowerOn_GPIO_Port, USBPowerOn_Pin, GPIO_PIN_SET);
+				} else {
+					HAL_GPIO_WritePin(USBPowerOn_GPIO_Port, USBPowerOn_Pin, GPIO_PIN_RESET);
+				}
 				break;
 			case 1:							// alle LEDs blinken
 				if(laufvariable > 10)
@@ -231,8 +266,14 @@ int main(void)
 		
 		// Analog Werte an USART3 printen
 		// PA0 - PA1 - PA4 - PA5 - TempInt - VrefInt - VBatInt
-		printf("Solar: %04i \tStrom: %04i \tVBat: %04i \tVUSB: %04i \tTemp: %04i \tVref: %04i \t(VBat: %04i)\n", \
+		
+		//printf("Solar: %04i \tI_Out: %04i \tVint: %04i \tVUSB: %04i \tTemp: %04i \tVref: %04i \t(VBat: %04i)\n", \
 		ADC_Buf[0], ADC_Buf[1], ADC_Buf[2], ADC_Buf[3], ADC_Buf[4], ADC_Buf[5], ADC_Buf[6]);
+		//printf("Solar: %.03fV \tI_Out: %.03fV \tVint: %.03fV \tVUSB: %.03fV \tTemp: %2.03f°C \tVref: %.03fV \t(VBat: %.03fV)\n", \
+		ADC2Volt(ADC_Buf[0]), ADC2Volt(ADC_Buf[1]), ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
+		TEMPIntCelsius(ADC2Volt(ADC_Buf[4])), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
+		
+		printf("V_int: %.03fV\n", ADC2Volt(ADC_Buf[2]));
 		
 		laufvariable ++;
 		if(laufvariable > 20)
@@ -375,7 +416,7 @@ static void MX_ADC1_Init(void)
 
     /**Configure Regular Channel 
     */
-  sConfig.Channel = ADC_CHANNEL_VREFINT;
+  sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = 6;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -574,7 +615,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, U23_RUN1_Pin|U23_RUN0_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, U23_RUN1_Pin|U23_RUN0_Pin|ACDC_On_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SHD_MPPT_Pin|EN2_VccS_Pin|_5V_Power_On_Pin, GPIO_PIN_RESET);
@@ -585,21 +626,26 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8|Fet1_Pin|Fet2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : U23_ALERT_Pin Alert_CM_Pin U61_PGOOD2_Pin */
-  GPIO_InitStruct.Pin = U23_ALERT_Pin|Alert_CM_Pin|U61_PGOOD2_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(USBPowerOn_GPIO_Port, USBPowerOn_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : U23_ALERT_Pin Alert_CM_Pin Fan_Fail_Pin OT_Fan_Pin 
+                           U61_PGOOD2_Pin */
+  GPIO_InitStruct.Pin = U23_ALERT_Pin|Alert_CM_Pin|Fan_Fail_Pin|OT_Fan_Pin 
+                          |U61_PGOOD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : U23_RUN1_Pin U23_RUN0_Pin */
-  GPIO_InitStruct.Pin = U23_RUN1_Pin|U23_RUN0_Pin;
+  /*Configure GPIO pins : U23_RUN1_Pin U23_RUN0_Pin ACDC_On_Pin */
+  GPIO_InitStruct.Pin = U23_RUN1_Pin|U23_RUN0_Pin|ACDC_On_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : Solar_Voltage_Pin Stromverbrauch_DCDC_Pin Mess_V_Bat_Pin Mess_V_USB_Pin */
-  GPIO_InitStruct.Pin = Solar_Voltage_Pin|Stromverbrauch_DCDC_Pin|Mess_V_Bat_Pin|Mess_V_USB_Pin;
+  /*Configure GPIO pins : Solar_Voltage_Pin I_Out_Pin V_int_Pin V_USB_Pin */
+  GPIO_InitStruct.Pin = Solar_Voltage_Pin|I_Out_Pin|V_int_Pin|V_USB_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -636,6 +682,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : USBPowerOn_Pin */
+  GPIO_InitStruct.Pin = USBPowerOn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(USBPowerOn_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : RaspberryGPIO2_Pin */
+  GPIO_InitStruct.Pin = RaspberryGPIO2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(RaspberryGPIO2_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : U61_PGOOD1_Pin */
   GPIO_InitStruct.Pin = U61_PGOOD1_Pin;

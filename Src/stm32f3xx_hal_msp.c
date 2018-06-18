@@ -97,7 +97,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     PA4     ------> ADC1_IN4
     PA5     ------> ADC1_IN5 
     */
-    GPIO_InitStruct.Pin = Solar_Voltage_Pin|Stromverbrauch_DCDC_Pin|Mess_V_Bat_Pin|Mess_V_USB_Pin;
+    GPIO_InitStruct.Pin = Solar_Voltage_Pin|I_Out_Pin|V_int_Pin|V_USB_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -146,7 +146,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PA4     ------> ADC1_IN4
     PA5     ------> ADC1_IN5 
     */
-    HAL_GPIO_DeInit(GPIOA, Solar_Voltage_Pin|Stromverbrauch_DCDC_Pin|Mess_V_Bat_Pin|Mess_V_USB_Pin);
+    HAL_GPIO_DeInit(GPIOA, Solar_Voltage_Pin|I_Out_Pin|V_int_Pin|V_USB_Pin);
 
     /* ADC1 DMA DeInit */
     HAL_DMA_DeInit(hadc->DMA_Handle);
