@@ -40,6 +40,7 @@
 #include "stm32f3xx_hal.h"
 
 /* USER CODE BEGIN Includes */
+#include "max11615.h"
 #include "max7313.h"
 #include "string.h"
 #include <stdio.h>
@@ -83,8 +84,8 @@ static void MX_ADC1_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-#define MAX7313_1 0x42        // 100 0010
-#define MAX7313_2 0x44        // 100 0100
+#define MAX7313_1  0x42        // 100 0010
+#define MAX7313_2  0x44        // 100 0100
 
 MAX7313 ioDriver_1;
 MAX7313 ioDriver_2;
@@ -95,18 +96,48 @@ uint8_t laufvariable = 0;
 
 const uint8_t battery_Leds[12] = {7, 8, 9, 10, 14, 15, 8, 9, 13, 14, 4, 1};
 
-void set_all_leds(uint8_t val){
-	
+static void set_all_leds(uint8_t val){
 	for(uint8_t i=0; i<12; i++){
 		MAX7313_Pin_Write( ( (i/2 >= 3) ? (&ioDriver_1):(&ioDriver_2) ) , battery_Leds[i], val);
 	}
 }
 
-uint32_t VREF1V23(){
-	return ADC_Buf[5];
+#define MAX11615_1 0x66
+
+MAX11615 adcDriver_1;
+
+/** scan I2C ------------------------------------------------------------------*/
+/** 
+  * 
+  */
+static void scanI2C(I2C_HandleTypeDef *hi2c){
+	uint8_t error, address;
+  uint16_t nDevices;
+  nDevices = 0;
+  for(address = 1; address < 127; address++ )
+  {
+		HAL_Delay(10);
+		error = HAL_I2C_Master_Transmit(hi2c, address, 0x00, 1, 1);
+    if (error == HAL_OK)
+    {
+      printf("I2C device found at address 0x");
+      if (address<16)
+        printf("0");
+      printf("%X", address);
+      printf("  !\n");
+ 
+      nDevices++;
+    }
+  }
+  if (nDevices == 0)
+    printf("No I2C devices found\n");
+  else
+    printf("done\n");
 }
 
-float ADC2Volt(uint32_t adc_val){
+#define VREF1V23 ADC_Buf[5]
+
+static float ADC2Volt(uint32_t adc_val){
 	/** ADC Values vs. Voltage
 	1960      1.64024
 	1790      1.49625
@@ -117,7 +148,14 @@ float ADC2Volt(uint32_t adc_val){
 	return (float)adc_val * (1.64024f / 1960.0f);
 }
 
-float TEMPIntCelsius(float Vtemp){
+static float MAX_ADC2Volt(uint32_t adc_val){
+	// Vrefint = 2.048V
+	// 1.968Vmin 2.048 2.128Vmax
+	// float vrefint = 2.048f;
+	return (float) adc_val * (2.048f) / 4096.0f;
+}
+
+static float TEMPIntCelsius(float Vtemp){
 	// STM32F373 datasheet - chapter 6.3.20 (p.105)
 	
 	// float V25typ = 1.43;     // V
@@ -193,9 +231,13 @@ int main(void)
   MX_ADC1_Init();
 
   /* USER CODE BEGIN 2 */
-		HAL_Delay(1000);
+  HAL_Delay(1000);
+  // scanI2C(&hi2c1);
+	
+	//adcDriver_1 = new_MAX11615();
 	ioDriver_1 = new_MAX7313();
 	ioDriver_2 = new_MAX7313();
+	
 	MAX7313_Pin_Mode(&ioDriver_2, 7, PORT_OUTPUT);  //  0%
 	MAX7313_Pin_Mode(&ioDriver_2, 8, PORT_OUTPUT);  // 10%
 	MAX7313_Pin_Mode(&ioDriver_2, 9, PORT_OUTPUT);  // 20%
@@ -220,6 +262,9 @@ int main(void)
 	
 	HAL_ADC_Start_DMA(&hadc1, ADC_Buf, 7);
 	HAL_ADC_Start_IT(&hadc1);
+	
+	// analog ref: internal + reference not connected + internal reference always on
+	MAX11615_Init(&adcDriver_1, &hi2c1, MAX11615_1, 4+2+1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -273,7 +318,22 @@ int main(void)
 		ADC2Volt(ADC_Buf[0]), ADC2Volt(ADC_Buf[1]), ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
 		TEMPIntCelsius(ADC2Volt(ADC_Buf[4])), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
 		
-		printf("V_int: %.03fV\n", ADC2Volt(ADC_Buf[2]));
+		// printf("V_int: %.03fV\n", ADC2Volt(ADC_Buf[2]));
+		uint16_t adc_bits = 0;
+		float adc_volt = 0.0;
+		/*
+		for(uint8_t i=0; i<8; i++){
+			MAX11615_ADC_Read(&adcDriver_1, i, &adc_bits);
+			// printf("%d:\t%05i\n", i, adc_bits);
+			adc_volt = MAX_ADC2Volt(adc_bits);
+			printf("%d:\t%04i   %.04fV\n", i, adc_bits, adc_volt);
+		}
+		*/
+		MAX11615_ADC_Read(&adcDriver_1, 5, &adc_bits);
+		adc_volt = MAX_ADC2Volt(adc_bits);
+		printf("%d:\t%#06x   %.04fV\n", 5, adc_bits, adc_volt);
+		printf("\n");
+		
 		
 		laufvariable ++;
 		if(laufvariable > 20)

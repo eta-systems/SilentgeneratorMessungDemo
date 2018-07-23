@@ -400,6 +400,11 @@
               <FileType>1</FileType>
               <FilePath>..\Src\MAX7313.c</FilePath>
             </File>
+            <File>
+              <FileName>MAX11615.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\MAX11615.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
