@@ -102,6 +102,22 @@ static void set_all_leds(uint8_t val){
 	}
 }
 
+static void set_battery_bar(uint8_t prozent){
+	// Todo
+	return;
+}
+
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0') 
+
 #define MAX11615_1 0x66
 
 MAX11615 adcDriver_1;
@@ -276,16 +292,11 @@ int main(void)
   /* USER CODE BEGIN 3 */
 		
 		/*
-		HAL_Delay(250);
-		LED_Bat_100proz.setIntensity(0);
-		HAL_Delay(250);
-		LED_Bat_100proz.setIntensity(1);
-		*/
-		
 		switch(led_mode){
 			case 0:							// 1 LED blinkt
 				set_all_leds(15);
 				if(laufvariable > 10){
+					// MAX7313_Pin_Write(&ioDriver_1, 14, 0);
 					MAX7313_Pin_Write(&ioDriver_1, 14, 0);
 					HAL_GPIO_WritePin(USBPowerOn_GPIO_Port, USBPowerOn_Pin, GPIO_PIN_SET);
 				} else {
@@ -309,6 +320,20 @@ int main(void)
 		}
 		HAL_Delay(100);
 		
+		uint8_t phase00, phase01, phase10, phase11;
+		MAX7313_Read8(&ioDriver_2, MAX7313_BLINK_PHASE_0_00_07, &phase00);
+		MAX7313_Read8(&ioDriver_2, MAX7313_BLINK_PHASE_0_08_15, &phase01);
+		//printf("P0: "BYTE_TO_BINARY_PATTERN BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(phase01), BYTE_TO_BINARY(phase00));
+		printf("P0 %#04x%02x\n", phase01, phase00);
+		*/
+		
+		MAX7313_Pin_Write(&ioDriver_2, 7, 14);
+		MAX7313_Pin_Write(&ioDriver_2, 8, 14);
+		HAL_Delay(1000);
+		MAX7313_Pin_Write(&ioDriver_2, 7, 15);
+		MAX7313_Pin_Write(&ioDriver_2, 8, 15);
+		HAL_Delay(1000);
+		
 		// Analog Werte an USART3 printen
 		// PA0 - PA1 - PA4 - PA5 - TempInt - VrefInt - VBatInt
 		
@@ -321,20 +346,16 @@ int main(void)
 		// printf("V_int: %.03fV\n", ADC2Volt(ADC_Buf[2]));
 		uint16_t adc_bits = 0;
 		float adc_volt = 0.0;
+		
 		/*
 		for(uint8_t i=0; i<8; i++){
 			MAX11615_ADC_Read(&adcDriver_1, i, &adc_bits);
 			// printf("%d:\t%05i\n", i, adc_bits);
 			adc_volt = MAX_ADC2Volt(adc_bits);
 			printf("%d:\t%04i   %.04fV\n", i, adc_bits, adc_volt);
-		}
-		*/
-		MAX11615_ADC_Read(&adcDriver_1, 5, &adc_bits);
-		adc_volt = MAX_ADC2Volt(adc_bits);
-		printf("%d:\t%#06x   %.04fV\n", 5, adc_bits, adc_volt);
+		}*/
 		printf("\n");
-		
-		
+
 		laufvariable ++;
 		if(laufvariable > 20)
 			laufvariable = 0;
