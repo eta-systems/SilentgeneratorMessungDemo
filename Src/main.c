@@ -42,6 +42,7 @@
 /* USER CODE BEGIN Includes */
 #include "max11615.h"
 #include "max7313.h"
+#include "silentgenerator.h"
 #include "string.h"
 #include <stdio.h>
 
@@ -86,105 +87,65 @@ static void MX_ADC1_Init(void);
 /* USER CODE BEGIN 0 */
 #define MAX7313_1  0x42        // 100 0010
 #define MAX7313_2  0x44        // 100 0100
-
-MAX7313 ioDriver_1;
-MAX7313 ioDriver_2;
-
-volatile uint8_t interrupt_val = 0;
-volatile uint8_t led_mode = 0;
-uint8_t laufvariable = 0;
-
-const uint8_t battery_Leds[12] = {7, 8, 9, 10, 14, 15, 8, 9, 13, 14, 4, 1};
-
-static void set_all_leds(uint8_t val){
-	for(uint8_t i=0; i<12; i++){
-		MAX7313_Pin_Write( ( (i/2 >= 3) ? (&ioDriver_1):(&ioDriver_2) ) , battery_Leds[i], val);
-	}
-}
-
-static void set_battery_bar(uint8_t prozent){
-	// Todo
-	return;
-}
-
-#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define BYTE_TO_BINARY(byte)  \
-  (byte & 0x80 ? '1' : '0'), \
-  (byte & 0x40 ? '1' : '0'), \
-  (byte & 0x20 ? '1' : '0'), \
-  (byte & 0x10 ? '1' : '0'), \
-  (byte & 0x08 ? '1' : '0'), \
-  (byte & 0x04 ? '1' : '0'), \
-  (byte & 0x02 ? '1' : '0'), \
-  (byte & 0x01 ? '1' : '0') 
-
 #define MAX11615_1 0x66
 
 MAX11615 adcDriver_1;
 
-/** scan I2C ------------------------------------------------------------------*/
-/** 
-  * 
-  */
-static void scanI2C(I2C_HandleTypeDef *hi2c){
-	uint8_t error, address;
-  uint16_t nDevices;
-  nDevices = 0;
-  for(address = 1; address < 127; address++ )
-  {
-		HAL_Delay(10);
-		error = HAL_I2C_Master_Transmit(hi2c, address, 0x00, 1, 1);
-    if (error == HAL_OK)
-    {
-      printf("I2C device found at address 0x");
-      if (address<16)
-        printf("0");
-      printf("%X", address);
-      printf("  !\n");
- 
-      nDevices++;
-    }
-  }
-  if (nDevices == 0)
-    printf("No I2C devices found\n");
-  else
-    printf("done\n");
+MAX7313 ioDriver_1;
+MAX7313 ioDriver_2;
+
+MAX7313* ioDrivers[3];
+
+volatile uint8_t interrupt_val = 0;
+volatile uint8_t led_mode = 0;
+volatile uint8_t STATE_INITIALIZED = 0;
+uint8_t laufvariable = 0;
+
+/* STATE MACHINE Begin */
+typedef enum {St_SG_Off, St_SG_On, N_States} state_t;
+typedef state_t state_func_t(void);
+
+state_t state_func_sg_off(void){
+	if( ! STATE_INITIALIZED ){
+		HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, 0);
+		MAX7313_Pin_Write( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 15);
+		STATE_INITIALIZED = 1;
+	}
 }
 
-#define VREF1V23 ADC_Buf[5]
-
-static float ADC2Volt(uint32_t adc_val){
-	/** ADC Values vs. Voltage
-	1960      1.64024
-	1790      1.49625
-	1525      1.27725
-	1180      1.99107
- (0         0.00000)
-	*/
-	return (float)adc_val * (1.64024f / 1960.0f);
+state_t state_func_sg_on(void){
+	HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, 0);
+	if( ! STATE_INITIALIZED ){
+		HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, 1);
+		MAX7313_Pin_Write( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 14);
+		STATE_INITIALIZED = 1;
+	}
 }
 
-static float MAX_ADC2Volt(uint32_t adc_val){
-	// Vrefint = 2.048V
-	// 1.968Vmin 2.048 2.128Vmax
-	// float vrefint = 2.048f;
-	return (float) adc_val * (2.048f) / 4096.0f;
+/* State Table */
+state_func_t* const state_table[ N_States ] = {
+	state_func_sg_off,
+	state_func_sg_on
+};
+
+/* Execute State Machine */
+state_t run_state(state_t state_now){
+	return state_table[ state_now ]();    // Pointer conversation Error
+};
+
+/* STATE MACHINE End */
+
+static void Silentgenerator_battery_bar(uint8_t percent, uint8_t bright, uint8_t off){
+	if(percent > 110)
+		percent = 110;
+	for(uint8_t i = 1; (i*10) <= percent; i ++){
+		MAX7313_Pin_Write(ioDrivers[ MAX7313_Chips[i] ], MAX7313_Ports[i], bright);
+	}
+	for(uint8_t i = (percent/10)+1; i <= 11; i++){
+		MAX7313_Pin_Write(ioDrivers[ MAX7313_Chips[i] ], MAX7313_Ports[i], off);
+	}
 }
 
-static float TEMPIntCelsius(float Vtemp){
-	// STM32F373 datasheet - chapter 6.3.20 (p.105)
-	
-	// float V25typ = 1.43;     // V
-	// float Vslope = 0.0043;   // V/°C
-	// float Tslope = 1.0/Vslope;
-	// float Toffset = 25.0 - V25typ*Tslope;
-	
-	// #define TEMP110_CAL_VALUE (((uint16_t*)((uint32_t)0x1FFFF7C2 ))
-  // #define TEMP30_CAL_VALUE  (((uint16_t*)((uint32_t)0x1FFFF7B8 ))
-	// float temperature = (float)((110.0f - 30.0f) / ((float)(*TEMP110_CAL_VALUE) - (float)(*TEMP30_CAL_VALUE)) * ((float)ADC_Buf[4] - (float)(*TEMP30_CAL_VALUE)) + 30.0f);
-	float temperature = (float)(((Vtemp*1000) - 1430) / (4.3f) + 25.0f);
-	return temperature;
-}
 
 /* PRINTF REDIRECT to UART BEGIN */
 // @see    http://www.keil.com/forum/60531/
@@ -225,7 +186,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -254,24 +215,42 @@ int main(void)
 	ioDriver_1 = new_MAX7313();
 	ioDriver_2 = new_MAX7313();
 	
-	MAX7313_Pin_Mode(&ioDriver_2, 7, PORT_OUTPUT);  //  0%
-	MAX7313_Pin_Mode(&ioDriver_2, 8, PORT_OUTPUT);  // 10%
-	MAX7313_Pin_Mode(&ioDriver_2, 9, PORT_OUTPUT);  // 20%
-	MAX7313_Pin_Mode(&ioDriver_2,10, PORT_OUTPUT);  // 30%
-	MAX7313_Pin_Mode(&ioDriver_2,14, PORT_OUTPUT);  // 40%
-	MAX7313_Pin_Mode(&ioDriver_2,15, PORT_OUTPUT);  // 50%
-	MAX7313_Pin_Mode(&ioDriver_1, 8, PORT_OUTPUT);  // 60%
-	MAX7313_Pin_Mode(&ioDriver_1, 9, PORT_OUTPUT);  // 70%
-	MAX7313_Pin_Mode(&ioDriver_1,13, PORT_OUTPUT);  // 80%
-	MAX7313_Pin_Mode(&ioDriver_1,14, PORT_OUTPUT);  // 90%
-	MAX7313_Pin_Mode(&ioDriver_1, 4, PORT_OUTPUT);  // 100%
-	MAX7313_Pin_Mode(&ioDriver_1, 1, PORT_OUTPUT);  // 110%
+  ioDrivers[0] = &ioDriver_1;  // this array contains 3 items so that the chip number (U1, U2)
+	ioDrivers[1] = &ioDriver_1;  // match the array indexes
+  ioDrivers[2] = &ioDriver_2;
 	
-	MAX7313_Pin_Mode(&ioDriver_2, 1, PORT_INPUT);
-	MAX7313_Pin_Mode(&ioDriver_2, 2, PORT_INPUT);
-	MAX7313_Pin_Mode(&ioDriver_2, 3, PORT_INPUT);
-	MAX7313_Pin_Mode(&ioDriver_2, 4, PORT_INPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_0   ],    PORT_LED_METER_0, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_10  ],   PORT_LED_METER_10, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_20  ],   PORT_LED_METER_20, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_30  ],   PORT_LED_METER_30, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_40  ],   PORT_LED_METER_40, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_50  ],   PORT_LED_METER_50, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_60  ],   PORT_LED_METER_60, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_70  ],   PORT_LED_METER_70, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_80  ],   PORT_LED_METER_80, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_90  ],   PORT_LED_METER_90, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_100 ],  PORT_LED_METER_100, PORT_OUTPUT);
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_110 ],  PORT_LED_METER_110, PORT_OUTPUT);
 	
+	MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_GRN_1 ], PORT_LED_GRN_1, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_GRN_2 ], PORT_LED_GRN_2, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_GRN_3 ], PORT_LED_GRN_3, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_GRN_4 ], PORT_LED_GRN_4, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, PORT_OUTPUT);
+
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_RED_1 ], PORT_LED_RED_1, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_RED_2 ], PORT_LED_RED_2, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_RED_3 ], PORT_LED_RED_3, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_RED_4 ], PORT_LED_RED_4, PORT_OUTPUT);
+
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_ERROR ], PORT_LED_ERROR, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_POWER ], PORT_LED_POWER, PORT_OUTPUT);
+
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_SWITCH_4 ], PORT_SWITCH_4, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_SWITCH_3 ], PORT_SWITCH_3, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_SWITCH_2 ], PORT_SWITCH_2, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_SWITCH_1 ], PORT_SWITCH_1, PORT_OUTPUT);
+
 	MAX7313_Init(&ioDriver_1, &hi2c1, MAX7313_1);
 	MAX7313_Init(&ioDriver_2, &hi2c1, MAX7313_2);
 	MAX7313_Interrupt_Enable(&ioDriver_2);
@@ -281,6 +260,8 @@ int main(void)
 	
 	// analog ref: internal + reference not connected + internal reference always on
 	MAX11615_Init(&adcDriver_1, &hi2c1, MAX11615_1, 4+2+1);
+	
+	state_t state = St_SG_Off;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -290,75 +271,7 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-		
-		/*
-		switch(led_mode){
-			case 0:							// 1 LED blinkt
-				set_all_leds(15);
-				if(laufvariable > 10){
-					// MAX7313_Pin_Write(&ioDriver_1, 14, 0);
-					MAX7313_Pin_Write(&ioDriver_1, 14, 0);
-					HAL_GPIO_WritePin(USBPowerOn_GPIO_Port, USBPowerOn_Pin, GPIO_PIN_SET);
-				} else {
-					HAL_GPIO_WritePin(USBPowerOn_GPIO_Port, USBPowerOn_Pin, GPIO_PIN_RESET);
-				}
-				break;
-			case 1:							// alle LEDs blinken
-				if(laufvariable > 10)
-					set_all_leds(0);
-				else
-					set_all_leds(15);
-				break;
-			case 2: 						// alle LEDs ein
-				set_all_leds(0);
-				break;
-			case 3:							// alle LEDs aus
-				set_all_leds(15);
-				break;
-			default:
-				led_mode = 0;
-		}
-		HAL_Delay(100);
-		
-		uint8_t phase00, phase01, phase10, phase11;
-		MAX7313_Read8(&ioDriver_2, MAX7313_BLINK_PHASE_0_00_07, &phase00);
-		MAX7313_Read8(&ioDriver_2, MAX7313_BLINK_PHASE_0_08_15, &phase01);
-		//printf("P0: "BYTE_TO_BINARY_PATTERN BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(phase01), BYTE_TO_BINARY(phase00));
-		printf("P0 %#04x%02x\n", phase01, phase00);
-		*/
-		
-		MAX7313_Pin_Write(&ioDriver_2, 7, 14);
-		MAX7313_Pin_Write(&ioDriver_2, 8, 14);
-		HAL_Delay(1000);
-		MAX7313_Pin_Write(&ioDriver_2, 7, 15);
-		MAX7313_Pin_Write(&ioDriver_2, 8, 15);
-		HAL_Delay(1000);
-		
-		// Analog Werte an USART3 printen
-		// PA0 - PA1 - PA4 - PA5 - TempInt - VrefInt - VBatInt
-		
-		//printf("Solar: %04i \tI_Out: %04i \tVint: %04i \tVUSB: %04i \tTemp: %04i \tVref: %04i \t(VBat: %04i)\n", \
-		ADC_Buf[0], ADC_Buf[1], ADC_Buf[2], ADC_Buf[3], ADC_Buf[4], ADC_Buf[5], ADC_Buf[6]);
-		//printf("Solar: %.03fV \tI_Out: %.03fV \tVint: %.03fV \tVUSB: %.03fV \tTemp: %2.03f°C \tVref: %.03fV \t(VBat: %.03fV)\n", \
-		ADC2Volt(ADC_Buf[0]), ADC2Volt(ADC_Buf[1]), ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
-		TEMPIntCelsius(ADC2Volt(ADC_Buf[4])), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
-		
-		// printf("V_int: %.03fV\n", ADC2Volt(ADC_Buf[2]));
-		uint16_t adc_bits = 0;
-		float adc_volt = 0.0;
-		
-		/*
-		for(uint8_t i=0; i<8; i++){
-			MAX11615_ADC_Read(&adcDriver_1, i, &adc_bits);
-			// printf("%d:\t%05i\n", i, adc_bits);
-			adc_volt = MAX_ADC2Volt(adc_bits);
-			printf("%d:\t%04i   %.04fV\n", i, adc_bits, adc_volt);
-		}*/
-		printf("\n");
-
-		laufvariable ++;
-		if(laufvariable > 20)
-			laufvariable = 0;
+		state = run_state(state);
   }
   /* USER CODE END 3 */
 
