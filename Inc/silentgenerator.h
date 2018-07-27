@@ -66,6 +66,8 @@
 #define CHIP_SWITCH_2       2
 #define CHIP_SWITCH_1       2
 
+#define SG_Switch_WKUP_Pin 				GPIO_PIN_13
+#define SG_Switch_WKUP_GPIO_Port 		GPIOC
 #define SG_U23_ALERT_Pin 				GPIO_PIN_0
 #define SG_U23_ALERT_GPIO_Port 			GPIOC
 #define SG_U23_RUN1_Pin 				GPIO_PIN_1
@@ -119,66 +121,15 @@
 #define SG_USB_Flag_GPIO_Port 			GPIOB
 #define SG_USB_Flag_EXTI_IRQn 			EXTI9_5_IRQn
 
-const uint8_t MAX7313_LED_RED_Ports[4] = {
-	PORT_LED_RED_1,
-	PORT_LED_RED_2,
-	PORT_LED_RED_3,
-	PORT_LED_RED_4
-};
+typedef struct {
+	uint8_t SW1;
+	uint8_t SW2;
+	uint8_t SW3;
+	uint8_t SW4;
+	uint8_t SW5;
+} SGButtons;
 
-const uint8_t MAX7313_LED_GRN_Ports[5] = {
-	PORT_LED_GRN_1,
-	PORT_LED_GRN_2,
-	PORT_LED_GRN_3,
-	PORT_LED_GRN_4,
-	PORT_LED_GRN_5
-};
-
-const uint8_t MAX7313_LED_RED_Chips[4] = {
-	CHIP_LED_RED_1,
-	CHIP_LED_RED_2,
-	CHIP_LED_RED_3,
-	CHIP_LED_RED_4
-};
-
-const uint8_t MAX7313_LED_GRN_Chips[5] = {
-	CHIP_LED_GRN_1,
-	CHIP_LED_GRN_2,
-	CHIP_LED_GRN_3,
-	CHIP_LED_GRN_4,
-	CHIP_LED_GRN_5
-};
-
-const uint8_t MAX7313_Ports[12] = {
-	PORT_LED_METER_0,
-	PORT_LED_METER_10,
-	PORT_LED_METER_20,
-	PORT_LED_METER_30,
-	PORT_LED_METER_40,
-	PORT_LED_METER_50,
-	PORT_LED_METER_60,
-	PORT_LED_METER_70,
-	PORT_LED_METER_80,
-	PORT_LED_METER_90,
-	PORT_LED_METER_100,
-	PORT_LED_METER_110
-};
-
-const uint8_t MAX7313_Chips[12] = {
-	CHIP_LED_METER_0,
-	CHIP_LED_METER_10,
-	CHIP_LED_METER_20,
-	CHIP_LED_METER_30,
-	CHIP_LED_METER_40,
-	CHIP_LED_METER_50,
-	CHIP_LED_METER_60,
-	CHIP_LED_METER_70,
-	CHIP_LED_METER_80,
-	CHIP_LED_METER_90,
-	CHIP_LED_METER_100,
-	CHIP_LED_METER_110
-};
-
+void readSGButton(volatile SGButtons *);
 void scanI2C(I2C_HandleTypeDef *);
 float ADC2Volt(uint32_t);
 float MAX_ADC2Volt(uint32_t);

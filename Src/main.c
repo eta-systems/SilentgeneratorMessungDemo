@@ -101,25 +101,94 @@ volatile uint8_t led_mode = 0;
 volatile uint8_t STATE_INITIALIZED = 0;
 uint8_t laufvariable = 0;
 
+volatile SGButtons button_states_old, button_states_new;
+
+const uint8_t MAX7313_LED_RED_Ports[4] = {
+	PORT_LED_RED_1,
+	PORT_LED_RED_2,
+	PORT_LED_RED_3,
+	PORT_LED_RED_4
+};
+
+const uint8_t MAX7313_LED_GRN_Ports[5] = {
+	PORT_LED_GRN_1,
+	PORT_LED_GRN_2,
+	PORT_LED_GRN_3,
+	PORT_LED_GRN_4,
+	PORT_LED_GRN_5
+};
+
+const uint8_t MAX7313_LED_RED_Chips[4] = {
+	CHIP_LED_RED_1,
+	CHIP_LED_RED_2,
+	CHIP_LED_RED_3,
+	CHIP_LED_RED_4
+};
+
+const uint8_t MAX7313_LED_GRN_Chips[5] = {
+	CHIP_LED_GRN_1,
+	CHIP_LED_GRN_2,
+	CHIP_LED_GRN_3,
+	CHIP_LED_GRN_4,
+	CHIP_LED_GRN_5
+};
+
+const uint8_t MAX7313_Ports[12] = {
+	PORT_LED_METER_0,
+	PORT_LED_METER_10,
+	PORT_LED_METER_20,
+	PORT_LED_METER_30,
+	PORT_LED_METER_40,
+	PORT_LED_METER_50,
+	PORT_LED_METER_60,
+	PORT_LED_METER_70,
+	PORT_LED_METER_80,
+	PORT_LED_METER_90,
+	PORT_LED_METER_100,
+	PORT_LED_METER_110
+};
+
+const uint8_t MAX7313_Chips[12] = {
+	CHIP_LED_METER_0,
+	CHIP_LED_METER_10,
+	CHIP_LED_METER_20,
+	CHIP_LED_METER_30,
+	CHIP_LED_METER_40,
+	CHIP_LED_METER_50,
+	CHIP_LED_METER_60,
+	CHIP_LED_METER_70,
+	CHIP_LED_METER_80,
+	CHIP_LED_METER_90,
+	CHIP_LED_METER_100,
+	CHIP_LED_METER_110
+};
+
 /* STATE MACHINE Begin */
 typedef enum {St_SG_Off, St_SG_On, N_States} state_t;
 typedef state_t state_func_t(void);
 
+// OFF
 state_t state_func_sg_off(void){
-	if( ! STATE_INITIALIZED ){
-		HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, 0);
-		MAX7313_Pin_Write( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 15);
-		STATE_INITIALIZED = 1;
+	if( button_states_new.SW5 > button_states_old.SW5 ){   // button pressed
+		printf("turning ON\n");
+		HAL_GPIO_WritePin( SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_SET );
+		HAL_GPIO_WritePin( SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_SET );
+		MAX7313_Pin_Write( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 14);
+		return St_SG_On;
 	}
+	return St_SG_Off;
 }
 
+// ON
 state_t state_func_sg_on(void){
-	HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, 0);
-	if( ! STATE_INITIALIZED ){
-		HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, 1);
-		MAX7313_Pin_Write( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 14);
-		STATE_INITIALIZED = 1;
+	if( button_states_new.SW5 > button_states_old.SW5 ){   // button pressed
+		printf("turning OFF\n");
+		HAL_GPIO_WritePin( SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_RESET );
+		HAL_GPIO_WritePin( SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_RESET );
+		MAX7313_Pin_Write( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 15);
+		return St_SG_Off;
 	}
+	return St_SG_On;
 }
 
 /* State Table */
@@ -261,6 +330,9 @@ int main(void)
 	// analog ref: internal + reference not connected + internal reference always on
 	MAX11615_Init(&adcDriver_1, &hi2c1, MAX11615_1, 4+2+1);
 	
+	button_states_new.SW5 = 0;
+	button_states_old.SW5 = 0;
+	
 	state_t state = St_SG_Off;
   /* USER CODE END 2 */
 
@@ -269,9 +341,15 @@ int main(void)
   while (1)
   {
   /* USER CODE END WHILE */
-
+		
   /* USER CODE BEGIN 3 */
+		readSGButton(&button_states_new); // old button state
 		state = run_state(state);
+		HAL_Delay(100);
+		button_states_old = button_states_new;
+		printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
+ 		ADC2Volt(ADC_Buf[0]), (ADC2Volt(ADC_Buf[1])/0.01f)/50.0f, ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
+		ADC2Volt(ADC_Buf[4]), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
   }
   /* USER CODE END 3 */
 
@@ -622,6 +700,12 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USBPowerOn_GPIO_Port, USBPowerOn_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : Switch_WKUP_Pin */
+  GPIO_InitStruct.Pin = Switch_WKUP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(Switch_WKUP_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : U23_ALERT_Pin Alert_CM_Pin Fan_Fail_Pin OT_Fan_Pin 
                            U61_PGOOD2_Pin */

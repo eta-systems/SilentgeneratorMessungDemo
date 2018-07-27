@@ -46,6 +46,8 @@
 
 /* Private define ------------------------------------------------------------*/
 
+#define Switch_WKUP_Pin GPIO_PIN_13
+#define Switch_WKUP_GPIO_Port GPIOC
 #define U23_ALERT_Pin GPIO_PIN_0
 #define U23_ALERT_GPIO_Port GPIOC
 #define U23_RUN1_Pin GPIO_PIN_1

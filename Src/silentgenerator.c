@@ -11,34 +11,41 @@
   * @see        https://forum.arduino.cc/index.php?topic=9682.0
   */
 
+#include "silentgenerator.h"
 #include "max7313.h"
 #include "main.h"
 #include "stm32f3xx_hal.h"
 
+void readSGButton(volatile SGButtons *buttons){
+	if ( HAL_GPIO_ReadPin(SG_Switch_WKUP_GPIO_Port, SG_Switch_WKUP_Pin) == GPIO_PIN_SET)
+		buttons->SW5 = 1;
+	else
+		buttons->SW5 = 0;
+}
+
 /** scan I2C ------------------------------------------------------------------*/
 void scanI2C(I2C_HandleTypeDef *hi2c){
 	uint8_t error, address;
-  uint16_t nDevices;
-  nDevices = 0;
-  for(address = 1; address < 127; address++ )
-  {
+	uint16_t nDevices;
+	nDevices = 0;
+	for(address = 1; address < 127; address++ )
+	{
 		HAL_Delay(10);
 		error = HAL_I2C_Master_Transmit(hi2c, address, 0x00, 1, 1);
-    if (error == HAL_OK)
-    {
-      printf("I2C device found at address 0x");
-      if (address<16)
-        printf("0");
-      printf("%X", address);
-      printf("  !\n");
- 
-      nDevices++;
-    }
-  }
-  if (nDevices == 0)
-    printf("No I2C devices found\n");
-  else
-    printf("done\n");
+		if (error == HAL_OK)
+		{
+			printf("I2C device found at address 0x");
+			if (address<16)
+				printf("0");
+			printf("%X", address);
+			printf("  !\n");
+			nDevices++;
+		}
+	}
+	if (nDevices == 0)
+		printf("No I2C devices found\n");
+	else
+		printf("done\n");
 }
 
 float ADC2Volt(uint32_t adc_val){
