@@ -88,3 +88,23 @@ float TEMPIntCelsius(float Vtemp){
 	float temperature = (float)(((Vtemp*1000) - 1430) / (4.3f) + 25.0f);
 	return temperature;
 }
+
+uint8_t MAX7313_LED_RED_Ports(uint8_t n){
+	return arr_MAX7313_LED_RED_Ports[n];
+}
+uint8_t MAX7313_LED_GRN_Ports(uint8_t n){
+	return arr_MAX7313_LED_GRN_Ports[n];
+}
+uint8_t MAX7313_LED_RED_Chips(uint8_t n){
+	return arr_MAX7313_LED_RED_Chips[n];
+}
+uint8_t MAX7313_LED_GRN_Chips(uint8_t n){
+	return arr_MAX7313_LED_GRN_Chips[n];
+}
+uint8_t MAX7313_Ports(uint8_t n){
+	return arr_MAX7313_Ports[n];
+}
+
+uint8_t MAX7313_Chips(uint8_t n){
+  return arr_MAX7313_Chips[n];
+}

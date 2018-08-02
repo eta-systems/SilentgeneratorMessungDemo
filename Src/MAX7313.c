@@ -121,7 +121,7 @@ uint8_t MAX7313_Pin_Write(MAX7313 *chip, uint8_t port, uint8_t intensity){
 	ret += MAX7313_Read8(chip, __max7313_get_phase_reg(port, 0), &phase0);
 	// MAX7313_Read8(chip, __max7313_get_phase_reg(port, 1), &phase1);
 	if(intensity == 0){
-		// Table 12.
+		// Datasheet: Table 12.
 		intensity = 0xF;  // turn on to max, because the inversion makes it completely off
 		phase0 &= (~(1<<(port%8)));  // inverted on state
 	} else {

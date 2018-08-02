@@ -37,9 +37,11 @@
 
 /* USER CODE BEGIN 0 */
 #include "max7313.h"
+#include "silentgenerator.h"
 extern MAX7313 ioDriver_2;
 extern uint8_t interrupt_val;
 extern uint8_t led_mode;
+extern SGButtons button_states_old, button_states_new;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -224,8 +226,9 @@ void EXTI9_5_IRQHandler(void)
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
 	  if(__HAL_GPIO_EXTI_GET_FLAG(Interrupt_HMI2_Pin)){
+			/*
 			MAX7313_Interrupt_Clear(&ioDriver_2);
-			if(!MAX7313_Pin_Read(&ioDriver_2, 1))
+			if(!MAX7313_Pin_Read(&ioDriver_2, 1))   // active low
 				led_mode = 0;
 			
 			if(!MAX7313_Pin_Read(&ioDriver_2, 2))
@@ -236,8 +239,24 @@ void EXTI9_5_IRQHandler(void)
 			
 			if(!MAX7313_Pin_Read(&ioDriver_2, 4))
 				led_mode = 3;
-			
+			*/
+
+      /** @Todo: new button states einlesen */
+			//button_states_new.SW1 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_1);
+		  //button_states_new.SW2 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_2);
+		  //button_states_new.SW3 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_3);
+		  //button_states_new.SW4 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_4);
+
+			uint8_t io_states = 0;
+			MAX7313_Read8(&ioDriver_2, MAX7313_READ_IN_00_07, &io_states);
+      /** @Todo: test masking and bitshifting */
+			button_states_new.SW1 = (io_states & (1 << PORT_SWITCH_1)) >> PORT_SWITCH_1;
+      button_states_new.SW2 = (io_states & (1 << PORT_SWITCH_2)) >> PORT_SWITCH_2;
+      button_states_new.SW3 = (io_states & (1 << PORT_SWITCH_3)) >> PORT_SWITCH_3;
+      button_states_new.SW4 = (io_states & (1 << PORT_SWITCH_4)) >> PORT_SWITCH_4;
+      
 		}
+		
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);

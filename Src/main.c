@@ -105,76 +105,16 @@ uint8_t laufvariable = 0;
 
 volatile SGButtons button_states_old, button_states_new;
 
-const uint8_t MAX7313_LED_RED_Ports[4] = {
-  PORT_LED_RED_1,
-  PORT_LED_RED_2,
-  PORT_LED_RED_3,
-  PORT_LED_RED_4
-};
-
-const uint8_t MAX7313_LED_GRN_Ports[5] = {
-  PORT_LED_GRN_1,
-  PORT_LED_GRN_2,
-  PORT_LED_GRN_3,
-  PORT_LED_GRN_4,
-  PORT_LED_GRN_5
-};
-
-const uint8_t MAX7313_LED_RED_Chips[4] = {
-  CHIP_LED_RED_1,
-  CHIP_LED_RED_2,
-  CHIP_LED_RED_3,
-  CHIP_LED_RED_4
-};
-
-const uint8_t MAX7313_LED_GRN_Chips[5] = {
-  CHIP_LED_GRN_1,
-  CHIP_LED_GRN_2,
-  CHIP_LED_GRN_3,
-  CHIP_LED_GRN_4,
-  CHIP_LED_GRN_5
-};
-
-const uint8_t MAX7313_Ports[12] = {
-  PORT_LED_METER_0,
-  PORT_LED_METER_10,
-  PORT_LED_METER_20,
-  PORT_LED_METER_30,
-  PORT_LED_METER_40,
-  PORT_LED_METER_50,
-  PORT_LED_METER_60,
-  PORT_LED_METER_70,
-  PORT_LED_METER_80,
-  PORT_LED_METER_90,
-  PORT_LED_METER_100,
-  PORT_LED_METER_110
-};
-
-const uint8_t MAX7313_Chips[12] = {
-  CHIP_LED_METER_0,
-  CHIP_LED_METER_10,
-  CHIP_LED_METER_20,
-  CHIP_LED_METER_30,
-  CHIP_LED_METER_40,
-  CHIP_LED_METER_50,
-  CHIP_LED_METER_60,
-  CHIP_LED_METER_70,
-  CHIP_LED_METER_80,
-  CHIP_LED_METER_90,
-  CHIP_LED_METER_100,
-  CHIP_LED_METER_110
-};
-
 static void MAX7313_Peripherals_Init(){
   ioDriver_1 = new_MAX7313();
   ioDriver_2 = new_MAX7313();
-  fetDriver = new_MAX7313();
+  fetDriver  = new_MAX7313();
   
   ioDrivers[0] = &ioDriver_1;  // this array contains 3 items so that the chip number (U1, U2)
   ioDrivers[1] = &ioDriver_1;  // match the array indexes
   ioDrivers[2] = &ioDriver_2;
   
-  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_0   ],    PORT_LED_METER_0, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_0   ],   PORT_LED_METER_0, PORT_OUTPUT);
   MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_10  ],   PORT_LED_METER_10, PORT_OUTPUT);
   MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_20  ],   PORT_LED_METER_20, PORT_OUTPUT);
   MAX7313_Pin_Mode( ioDrivers[ CHIP_LED_METER_30  ],   PORT_LED_METER_30, PORT_OUTPUT);
@@ -206,22 +146,24 @@ static void MAX7313_Peripherals_Init(){
   MAX7313_Pin_Mode( ioDrivers[ CHIP_SWITCH_2 ], PORT_SWITCH_2, PORT_OUTPUT);
   MAX7313_Pin_Mode( ioDrivers[ CHIP_SWITCH_1 ], PORT_SWITCH_1, PORT_OUTPUT);
 
-  MAX7313_Init(&ioDriver_1, &hi2c1, MAX7313_1);
-  MAX7313_Init(&ioDriver_2, &hi2c1, MAX7313_2);
-  MAX7313_Interrupt_Enable(&ioDriver_2);
-
   MAX7313_Pin_Mode( &fetDriver, PORT_FET_INV1_ON, PORT_OUTPUT);
   MAX7313_Pin_Mode( &fetDriver, PORT_FET_INV2_ON, PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_K1,      PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_K2,      PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_K3,      PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_K4,      PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K1,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K2,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K3,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K4,    PORT_OUTPUT);
   MAX7313_Pin_Mode( &fetDriver, PORT_FET_ACDC_ON, PORT_OUTPUT);
   MAX7313_Pin_Mode( &fetDriver, PORT_FET_CELL_ON, PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_O1,      PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_O2,      PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_O3,      PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_O4,      PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O1,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O2,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O3,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O4,     PORT_INPUT);
+
+  MAX7313_Init(&ioDriver_1, &hi2c1, MAX7313_1);
+  MAX7313_Init(&ioDriver_2, &hi2c1, MAX7313_2);
+  MAX7313_Init(&fetDriver,  &hi2c1, MAX7313_FET);
+  MAX7313_Interrupt_Enable(&ioDriver_2);
+  MAX7313_Interrupt_Enable(&fetDriver);
 }
 
 /* STATE MACHINE Begin */
@@ -249,6 +191,23 @@ state_t state_func_sg_on(void){
     MAX7313_Pin_Write( ioDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 15);
     return St_SG_Off;
   }
+	/* BEGIN Silentgenerator MAIN LOOP */
+	
+	/** @Todo: dem Programmvorschlag entsprechend */
+	/* BUTTON AC */
+	if(button_states_new.SW1 < button_states_old.SW1){    // active low
+	}
+	/* BUTTON USB */
+	if(button_states_new.SW2 < button_states_old.SW2){    // active low
+	}
+	/* BUTTON DC */
+	if(button_states_new.SW3 < button_states_old.SW3){    // active low
+	}
+	/* BUTTON SOLAR */
+	if(button_states_new.SW4 < button_states_old.SW4){    // active low
+	}
+	
+	/* END Silentgenerator MAIN LOOP */
   return St_SG_On;
 }
 
@@ -269,13 +228,12 @@ static void Silentgenerator_battery_bar(uint8_t percent, uint8_t bright, uint8_t
   if(percent > 110)
     percent = 110;
   for(uint8_t i = 1; (i*10) <= percent; i ++){
-    MAX7313_Pin_Write(ioDrivers[ MAX7313_Chips[i] ], MAX7313_Ports[i], bright);
+    MAX7313_Pin_Write(ioDrivers[ MAX7313_Chips(i) ], MAX7313_Ports(i), bright);
   }
   for(uint8_t i = (percent/10)+1; i <= 11; i++){
-    MAX7313_Pin_Write(ioDrivers[ MAX7313_Chips[i] ], MAX7313_Ports[i], off);
+    MAX7313_Pin_Write(ioDrivers[ MAX7313_Chips(i) ], MAX7313_Ports(i), off);
   }
 }
-
 
 /* PRINTF REDIRECT to UART BEGIN */
 // @see    http://www.keil.com/forum/60531/
@@ -338,8 +296,8 @@ int main(void)
   MX_ADC1_Init();
 
   /* USER CODE BEGIN 2 */
-  HAL_Delay(100);
-  // scanI2C(&hi2c1);
+  HAL_Delay(1000);
+  scanI2C(&hi2c1);
   
   //adcDriver_1 = new_MAX11615();
   MAX7313_Peripherals_Init();
@@ -363,6 +321,8 @@ int main(void)
   /* USER CODE END WHILE */
     
   /* USER CODE BEGIN 3 */
+		
+		/*
     readSGButton(&button_states_new); // old button state
     state = run_state(state);
     HAL_Delay(100);
@@ -370,6 +330,35 @@ int main(void)
     printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
     ADC2Volt(ADC_Buf[0]), (ADC2Volt(ADC_Buf[1])/0.01f)/50.0f, ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
     ADC2Volt(ADC_Buf[4]), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
+    */
+		
+    /*
+    for(uint8_t i=0; i<10; i++){
+      MAX7313_Pin_Write( &fetDriver, i, NO_PWM_LOW);
+    }
+    MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_LOW);
+    MAX7313_Pin_Write( &ioDriver_2, 8, NO_PWM_LOW);
+    HAL_Delay(1000);
+    for(uint8_t i=0; i<10; i++){
+      MAX7313_Pin_Write( &fetDriver, i, NO_PWM_HIGH);
+    }
+    MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_HIGH);
+    MAX7313_Pin_Write( &ioDriver_2, 8, NO_PWM_HIGH);
+    HAL_Delay(1000);
+    */
+    
+		
+    MAX7313_Pin_Write( &fetDriver, 8, NO_PWM_LOW);
+    MAX7313_Pin_Write( &fetDriver, 9, NO_PWM_LOW);
+    MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_LOW);
+    MAX7313_Pin_Write( &ioDriver_2, 8, NO_PWM_LOW);
+    HAL_Delay(3000);
+		MAX7313_Pin_Write( &fetDriver, 8, NO_PWM_HIGH);
+    MAX7313_Pin_Write( &fetDriver, 9, NO_PWM_HIGH);
+    MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_HIGH);
+    MAX7313_Pin_Write( &ioDriver_2, 8, NO_PWM_HIGH);
+    HAL_Delay(10000);
+		
   }
   /* USER CODE END 3 */
 
