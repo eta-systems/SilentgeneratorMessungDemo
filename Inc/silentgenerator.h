@@ -7,7 +7,8 @@
 #ifndef __SILENTGENERATOR_H
 #define __SILENTGENERATOR_H
 
-/* Private define ------------------------------------------------------------*/
+/* Public define -------------------------------------------------------------*/
+// LED / Button Ports
 #define PORT_LED_METER_0    7
 #define PORT_LED_METER_10   8
 #define PORT_LED_METER_20   9
@@ -66,6 +67,21 @@
 #define CHIP_SWITCH_2       2
 #define CHIP_SWITCH_1       2
 
+// FET Driver Ports
+#define PORT_FET_INV1_ON    2
+#define PORT_FET_INV2_ON    3
+#define PORT_FET_K1         4
+#define PORT_FET_K2         5
+#define PORT_FET_K3         6
+#define PORT_FET_K4         7
+#define PORT_FET_ACDC_ON    8
+#define PORT_FET_CELL_ON    9
+#define PORT_FET_O1         10
+#define PORT_FET_O2         11
+#define PORT_FET_O3         12
+#define PORT_FET_O4         13
+
+// GPIO Pins / PORTS
 #define SG_Switch_WKUP_Pin 				GPIO_PIN_13
 #define SG_Switch_WKUP_GPIO_Port 		GPIOC
 #define SG_U23_ALERT_Pin 				GPIO_PIN_0
