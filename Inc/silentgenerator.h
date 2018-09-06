@@ -167,7 +167,7 @@ static const uint8_t arr_MAX7313_LED_GRN_Chips[5] = {
   CHIP_LED_GRN_5
 };
 
-static const uint8_t arr_MAX7313_Ports[12] = {
+static const uint8_t arr_MAX7313_Battery_Meter_Ports[12] = {
   PORT_LED_METER_0,
   PORT_LED_METER_10,
   PORT_LED_METER_20,
@@ -182,7 +182,7 @@ static const uint8_t arr_MAX7313_Ports[12] = {
   PORT_LED_METER_110
 };
 
-static const uint8_t arr_MAX7313_Chips[12] = {
+static const uint8_t arr_MAX7313_Battery_Meter_Chips[12] = {
   CHIP_LED_METER_0,
   CHIP_LED_METER_10,
   CHIP_LED_METER_20,
@@ -214,8 +214,8 @@ uint8_t MAX7313_LED_RED_Ports(uint8_t);
 uint8_t MAX7313_LED_GRN_Ports(uint8_t);
 uint8_t MAX7313_LED_RED_Chips(uint8_t);
 uint8_t MAX7313_LED_GRN_Chips(uint8_t);
-uint8_t MAX7313_Ports(uint8_t);
-uint8_t MAX7313_Chips(uint8_t);
+uint8_t Battery_Meter_Ports(uint8_t);
+uint8_t Battery_Meter_Chips(uint8_t);
 
 /**
   * @}

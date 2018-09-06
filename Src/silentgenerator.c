@@ -32,6 +32,7 @@ void scanI2C(I2C_HandleTypeDef *hi2c){
 	{
 		HAL_Delay(10);
 		error = HAL_I2C_Master_Transmit(hi2c, address, 0x00, 1, 1);
+		//error = HAL_I2C_Master_Receive(hi2c, address, 0x00, 1, 1);
 		if (error == HAL_OK)
 		{
 			printf("I2C device found at address 0x");
@@ -89,22 +90,27 @@ float TEMPIntCelsius(float Vtemp){
 	return temperature;
 }
 
+// must be realized as a function because global array definitions are not possible
 uint8_t MAX7313_LED_RED_Ports(uint8_t n){
 	return arr_MAX7313_LED_RED_Ports[n];
 }
+// must be realized as a function because global array definitions are not possible
 uint8_t MAX7313_LED_GRN_Ports(uint8_t n){
 	return arr_MAX7313_LED_GRN_Ports[n];
 }
+// must be realized as a function because global array definitions are not possible
 uint8_t MAX7313_LED_RED_Chips(uint8_t n){
 	return arr_MAX7313_LED_RED_Chips[n];
 }
+// must be realized as a function because global array definitions are not possible
 uint8_t MAX7313_LED_GRN_Chips(uint8_t n){
 	return arr_MAX7313_LED_GRN_Chips[n];
 }
-uint8_t MAX7313_Ports(uint8_t n){
-	return arr_MAX7313_Ports[n];
+// must be realized as a function because global array definitions are not possible
+uint8_t Battery_Meter_Ports(uint8_t n){
+	return arr_MAX7313_Battery_Meter_Ports[n];
 }
-
-uint8_t MAX7313_Chips(uint8_t n){
-  return arr_MAX7313_Chips[n];
+// must be realized as a function because global array definitions are not possible
+uint8_t Battery_Meter_Chips(uint8_t n){
+  return arr_MAX7313_Battery_Meter_Chips[n];
 }
