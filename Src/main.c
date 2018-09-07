@@ -92,6 +92,7 @@ static void MX_USB_PCD_Init(void);
 #define ADDRESS_MAX11615_DCDC_1  0x66
 #define ADDRESS_MAX3440X_MPPT_1  0x34
 
+
 MAX11615 adcDriver_1;
 
 MAX3440X adcMonitor_1;
@@ -109,7 +110,7 @@ uint8_t laufvariable = 0;
 
 volatile SGButtons button_states_old, button_states_new;
 
-static void MAX7313_Peripherals_Init(){
+static void SG_MAX7313_Init(){
   ioDriver_1 = new_MAX7313();
   ioDriver_2 = new_MAX7313();
   fetDriver  = new_MAX7313();
@@ -168,9 +169,6 @@ static void MAX7313_Peripherals_Init(){
   MAX7313_Init(&fetDriver,  &hi2c1, ADDRESS_MAX7313_DCDC_FET);
   MAX7313_Interrupt_Enable(&ioDriver_2);
   MAX7313_Interrupt_Enable(&fetDriver);
-	
-	MAX3440X_Init(&adcMonitor_1, &hi2c1, ADDRESS_MAX3440X_MPPT_1);
-	
 }
 
 /* STATE MACHINE Begin */
@@ -230,55 +228,6 @@ state_t run_state(state_t state_now){
 };
 
 /* STATE MACHINE END */
-
-/* SILENTGENERATOR FUNCTIONS */
-/**@todo move to silentgenerator.c using extern declarations */
-
-/**
-	*@brief 	Sets the LEDs as a BAR from 0 to percentage on the HUI according to the percentage
-	*@param 	percent The percentage value to display (0 - 110)
-	*@param 	bright_on Brightness value for ON LEDs (PWM setting 0-15)
-	*@param 	bright_off Brightness value for OFF LEDs (PWM setting 0-15)
-	*/
-static void SILENTGENERATOR_BATTERYBAR_BAR(uint8_t percent, uint8_t bright_on, uint8_t bright_off){
-  if(percent > 110)
-    percent = 110;
-  for(uint8_t i = 1; (i*10) <= percent; i ++){
-    MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_on);
-  }
-  for(uint8_t i = (percent/10)+1; i <= 11; i++){
-    MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_off);
-  }
-}
-
-/**
-	*@brief 	Sets only ONE LED on the HUI according to the percentage
-	*@param 	percent The percentage value to display (0 - 110)
-	*@param 	bright_on Brightness value for ON LEDs (PWM setting 0-15)
-	*@param 	bright_off Brightness value for OFF LEDs (PWM setting 0-15)
-	*/
-static void SILENTGENERATOR_BATTERYBAR_DOT(uint8_t percent, uint8_t bright_on, uint8_t bright_off){
-  if(percent > 110)
-    percent = 110;
-	for(uint8_t i = 0; i < 11; i++){
-		if(percent >= (i*10) && percent <= ((i+1)*10))
-			MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_on);
-		else
-			MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_off);
-	}
-}
-
-/**
-	*@brief 	Sets the LEDs on the HUI according to the percentage
-	*@param 	percent The percentage value to display (0 - 110)
-	*@param 	bright_on Brightness value for ON LEDs (PWM setting 0-15)
-	*@param 	bright_off Brightness value for OFF LEDs (PWM setting 0-15)
-	*/
-static void SILENTGENERATOR_BATTERYBAR_UPDATE(uint8_t volt, uint8_t fullbar){
-	/**@todo using #define for hardcoded brightness settings */
-}
-
-/* SILENTGENERATOR FUNCTIONS END */
 
 /* PRINTF REDIRECT to UART BEGIN */
 // @see    http://www.keil.com/forum/60531/
@@ -341,23 +290,24 @@ int main(void)
   MX_USB_PCD_Init();
 
   /* USER CODE BEGIN 2 */
-  HAL_Delay(1000);
-  scanI2C(&hi2c1);
-  
-  //adcDriver_1 = new_MAX11615();
-  MAX7313_Peripherals_Init();
-  
   HAL_ADC_Start_DMA(&hadc1, ADC_Buf, 7);
   HAL_ADC_Start_IT(&hadc1);
   
   // analog ref: internal + reference not connected + internal reference always on
   MAX11615_Init(&adcDriver_1, &hi2c1, ADDRESS_MAX11615_DCDC_1, 4+2+1);
-  
+  SG_MAX7313_Init();
+	MAX3440X_Init(&adcMonitor_1, &hi2c1, ADDRESS_MAX3440X_MPPT_1);
+	
   button_states_new.SW5 = 0;
   button_states_old.SW5 = 0;
   
   state_t state = St_SG_Off;
 	uint8_t temp_set = 0;
+	
+	printf("ETA Systems Silentgenerator\n");
+	printf("Embedded Software Version (in development)\n");
+  SG_I2C_ScanAddresses(&hi2c1);
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -368,15 +318,19 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 		
-		/*
-    readSGButton(&button_states_new); // old button state
+    SG_BTN_ReadAll(&button_states_new); // old button state
     state = run_state(state);
     HAL_Delay(100);
     button_states_old = button_states_new;
-    printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
+    //printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
     ADC2Volt(ADC_Buf[0]), (ADC2Volt(ADC_Buf[1])/0.01f)/50.0f, ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
     ADC2Volt(ADC_Buf[4]), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
-    */
+    
+		printf("Vint:\t%d\t%0.4f V\t%d\%\n", ADC_Buf[2], \
+		SG_ADC_GetVint(ADC_Buf[2]), \
+		SG_BAT_LED_GetLevel(SG_ADC_GetVint(ADC_Buf[2])));
+		SG_BAT_LED_Update(ADC_Buf[2], 1);
+		HAL_Delay(100);
 		
     /*
     for(uint8_t i=0; i<10; i++){
@@ -403,10 +357,12 @@ int main(void)
 		HAL_Delay(100);
 		*/
 		
+		/*
 		MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_HIGH);
 		HAL_Delay(1000);
 		MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_LOW);
 		HAL_Delay(1000);
+		*/
   }
   /* USER CODE END 3 */
 

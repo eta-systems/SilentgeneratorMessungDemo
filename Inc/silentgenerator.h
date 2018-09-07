@@ -8,6 +8,25 @@
 #define __SILENTGENERATOR_H
 
 /* Public define -------------------------------------------------------------*/
+
+/* USER SETTINGS Application Specific ----------------------------------------*/
+/** @todo get accurate battery voltage-chargelevel curves */
+#define SG_12V_BAT_LEV_VOLT_100  (14.340f)
+#define SG_12V_BAT_LEV_VOLT_90   (13.300f)
+#define SG_12V_BAT_LEV_VOLT_80   (13.270f)
+#define SG_12V_BAT_LEV_VOLT_70   (13.160f)
+#define SG_12V_BAT_LEV_VOLT_60   (13.130f)
+#define SG_12V_BAT_LEV_VOLT_50   (13.116f)
+#define SG_12V_BAT_LEV_VOLT_40   (13.104f)
+#define SG_12V_BAT_LEV_VOLT_30   (12.996f)
+#define SG_12V_BAT_LEV_VOLT_20   (12.866f)  // never go below this voltage
+#define SG_12V_BAT_LEV_VOLT_10   (12.730f)  //
+#define SG_12V_BAT_LEV_VOLT_0     (9.200f)
+
+#define SG_BAT_LED_BRIGHT_ON    12
+#define SG_BAT_LED_BRIGHT_OFF   15
+
+/* END USER SETTINGS ---------------------------------------------------------*/
 // LED / Button Ports
 #define PORT_LED_METER_0     7
 #define PORT_LED_METER_10    8
@@ -205,8 +224,8 @@ typedef struct {
 	uint8_t SW5;
 } SGButtons;
 
-void readSGButton(volatile SGButtons *);
-void scanI2C(I2C_HandleTypeDef *);
+void SG_BTN_ReadAll(volatile SGButtons *);
+void SG_I2C_ScanAddresses(I2C_HandleTypeDef *);
 float ADC2Volt(uint32_t);
 float MAX_ADC2Volt(uint32_t);
 float TEMPIntCelsius(float);
@@ -216,6 +235,12 @@ uint8_t MAX7313_LED_RED_Chips(uint8_t);
 uint8_t MAX7313_LED_GRN_Chips(uint8_t);
 uint8_t Battery_Meter_Ports(uint8_t);
 uint8_t Battery_Meter_Chips(uint8_t);
+
+int16_t SG_BAT_LED_GetLevel(float);
+void SG_BAT_LED_SetBar(uint8_t, uint8_t, uint8_t);
+void SG_BAT_LED_SetDot(uint8_t, uint8_t, uint8_t);
+void SG_BAT_LED_Update(uint32_t, uint8_t);
+float SG_ADC_GetVint(uint32_t);
 
 /**
   * @}

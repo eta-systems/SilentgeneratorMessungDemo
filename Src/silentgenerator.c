@@ -16,7 +16,9 @@
 #include "main.h"
 #include "stm32f3xx_hal.h"
 
-void readSGButton(volatile SGButtons *buttons){
+extern MAX7313* ledDrivers[3];
+
+void SG_BTN_ReadAll(volatile SGButtons *buttons){
 	if ( HAL_GPIO_ReadPin(SG_Switch_WKUP_GPIO_Port, SG_Switch_WKUP_Pin) == GPIO_PIN_SET)
 		buttons->SW5 = 1;
 	else
@@ -24,10 +26,11 @@ void readSGButton(volatile SGButtons *buttons){
 }
 
 /** scan I2C ------------------------------------------------------------------*/
-void scanI2C(I2C_HandleTypeDef *hi2c){
+void SG_I2C_ScanAddresses(I2C_HandleTypeDef *hi2c){
 	uint8_t error, address;
 	uint16_t nDevices;
 	nDevices = 0;
+	printf("Scanning for available I2C devices...");
 	for(address = 1; address < 127; address++ )
 	{
 		HAL_Delay(10);
@@ -114,3 +117,74 @@ uint8_t Battery_Meter_Ports(uint8_t n){
 uint8_t Battery_Meter_Chips(uint8_t n){
   return arr_MAX7313_Battery_Meter_Chips[n];
 }
+
+/**
+	*@brief 	Sets the LEDs as a BAR from 0 to percentage on the HUI according to the percentage
+	*@param 	percent The percentage value to display (0 - 110)
+	*@param 	bright_on Brightness value for ON LEDs (PWM setting 0-15)
+	*@param 	bright_off Brightness value for OFF LEDs (PWM setting 0-15)
+	*/
+void SG_BAT_LED_SetBar(uint8_t percent, uint8_t bright_on, uint8_t bright_off){
+  if(percent > 110)
+    percent = 110;
+  for(uint8_t i = 1; (i*10) <= percent; i ++){
+    MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_on);
+  }
+  for(uint8_t i = (percent/10)+1; i <= 11; i++){
+    MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_off);
+  }
+}
+
+/**
+	*@brief 	Sets only ONE LED on the HUI according to the percentage
+	*@param 	percent The percentage value to display (0 - 110)
+	*@param 	bright_on Brightness value for ON LEDs (PWM setting 0-15)
+	*@param 	bright_off Brightness value for OFF LEDs (PWM setting 0-15)
+	*/
+void SG_BAT_LED_SetDot(uint8_t percent, uint8_t bright_on, uint8_t bright_off){
+  if(percent > 110)
+    percent = 110;
+	for(uint8_t i = 0; i <= 11; i++){
+		if(percent >= (i*10) && percent < ((i+1)*10))
+			MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_on);
+		else
+			MAX7313_Pin_Write(ledDrivers[ Battery_Meter_Chips(i) ], Battery_Meter_Ports(i), bright_off);
+	}
+}
+
+/**
+	*@brief 	Sets the LEDs on the HUI according to the percentage
+	*@param 	percent The percentage value to display (0 - 110)
+	*@param 	bright_on Brightness value for ON LEDs (PWM setting 0-15)
+	*@param 	bright_off Brightness value for OFF LEDs (PWM setting 0-15)
+	*/
+void SG_BAT_LED_Update(uint32_t adc, uint8_t fullbar){
+	if(fullbar)
+		SG_BAT_LED_SetBar( SG_BAT_LED_GetLevel( SG_ADC_GetVint(adc) ), SG_BAT_LED_BRIGHT_ON, SG_BAT_LED_BRIGHT_OFF);
+	else
+		SG_BAT_LED_SetDot( SG_BAT_LED_GetLevel( SG_ADC_GetVint(adc) ), SG_BAT_LED_BRIGHT_ON, SG_BAT_LED_BRIGHT_OFF);
+}
+
+int16_t SG_BAT_LED_GetLevel(float volt){
+	/** @todo Genaue Spannungs-Prozentkurve definieren */
+	// in %/V
+	float m = (100.0f - 10.0f)/\
+		(SG_12V_BAT_LEV_VOLT_100 - SG_12V_BAT_LEV_VOLT_10);
+	float q = 100.0f - (SG_12V_BAT_LEV_VOLT_100 * m);
+	return (int16_t)((volt * m) + q);
+}
+
+float SG_ADC_GetVint(uint32_t adc){
+	/** Messung vom 2018.09.07 in Derendingen 
+	ADC		 Vint
+	 972    5.4409
+	1763   11.2525
+	2021   13.1705
+	2320   15.4178
+	*/
+	float m = 0.007478;  // V / LSB
+	float q = -1.9312f;  // V offset
+	return ((float)adc) * m + q;
+}
+
+
