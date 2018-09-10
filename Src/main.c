@@ -86,90 +86,92 @@ static void MX_USB_PCD_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+/** @todo move to silentgenerator.h */
 #define ADDRESS_MAX7313_HUI_1   0x42        // 100 0010
 #define ADDRESS_MAX7313_HUI_2   0x44        // 100 0100
 #define ADDRESS_MAX7313_DCDC_FET 0x40
 #define ADDRESS_MAX11615_DCDC_1  0x66
 #define ADDRESS_MAX3440X_MPPT_1  0x34
 
-
 MAX11615 adcDriver_1;
-
 MAX3440X adcMonitor_1;
-
-MAX7313 ioDriver_1;
-MAX7313 ioDriver_2;
+MAX7313 huiIODriver_1;
+MAX7313 huiIODriver_2;
 MAX7313 fetDriver;
 
 MAX7313* ledDrivers[3];
 
-volatile uint8_t interrupt_val = 0;
-volatile uint8_t led_mode = 0;
-volatile uint8_t STATE_INITIALIZED = 0;
-uint8_t laufvariable = 0;
+volatile SGButtons 	button_states_old, \
+										button_states_new, \
+										button_action_required;
+static uint8_t 	SG_Enabled_USB = 0, \
+								SG_Enabled_AC = 0, \
+								SG_Enabled_Solar = 0, \
+								SG_Enabled_DC = 0;
+volatile uint32_t display_delay = 0;
 
-volatile SGButtons button_states_old, button_states_new;
-
+/** @todo move to silentgenerator.c */
 static void SG_MAX7313_Init(){
-  ioDriver_1 = new_MAX7313();
-  ioDriver_2 = new_MAX7313();
+  huiIODriver_1 = new_MAX7313();
+  huiIODriver_2 = new_MAX7313();
   fetDriver  = new_MAX7313();
   
-  ledDrivers[0] = &ioDriver_1;  // this array contains 3 items so that the chip number (U1, U2)
-  ledDrivers[1] = &ioDriver_1;  // match the array indexes
-  ledDrivers[2] = &ioDriver_2;
+  ledDrivers[0] = &huiIODriver_1;  // this array contains 3 items so that the chip number (U1, U2)
+  ledDrivers[1] = &huiIODriver_1;  // match the array indexes
+  ledDrivers[2] = &huiIODriver_2;
   
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_0   ],   PORT_LED_METER_0, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_10  ],   PORT_LED_METER_10, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_20  ],   PORT_LED_METER_20, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_30  ],   PORT_LED_METER_30, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_40  ],   PORT_LED_METER_40, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_50  ],   PORT_LED_METER_50, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_60  ],   PORT_LED_METER_60, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_70  ],   PORT_LED_METER_70, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_80  ],   PORT_LED_METER_80, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_90  ],   PORT_LED_METER_90, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_100 ],  PORT_LED_METER_100, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_METER_110 ],  PORT_LED_METER_110, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_0   ], SG_PORT_LED_METER_0,   PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_10  ], SG_PORT_LED_METER_10,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_20  ], SG_PORT_LED_METER_20,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_30  ], SG_PORT_LED_METER_30,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_40  ], SG_PORT_LED_METER_40,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_50  ], SG_PORT_LED_METER_50,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_60  ], SG_PORT_LED_METER_60,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_70  ], SG_PORT_LED_METER_70,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_80  ], SG_PORT_LED_METER_80,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_90  ], SG_PORT_LED_METER_90,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_100 ], SG_PORT_LED_METER_100, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_110 ], SG_PORT_LED_METER_110, PORT_OUTPUT);
   
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_GRN_1 ], PORT_LED_GRN_1, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_GRN_2 ], PORT_LED_GRN_2, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_GRN_3 ], PORT_LED_GRN_3, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_GRN_4 ], PORT_LED_GRN_4, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_1 ],     SG_PORT_LED_GRN_1,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_2 ],     SG_PORT_LED_GRN_2,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_3 ],     SG_PORT_LED_GRN_3,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_4 ],     SG_PORT_LED_GRN_4,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_5 ],     SG_PORT_LED_GRN_5,     PORT_OUTPUT);
 
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_RED_1 ], PORT_LED_RED_1, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_RED_2 ], PORT_LED_RED_2, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_RED_3 ], PORT_LED_RED_3, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_RED_4 ], PORT_LED_RED_4, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_1 ],     SG_PORT_LED_RED_1,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_2 ],     SG_PORT_LED_RED_2,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_3 ],     SG_PORT_LED_RED_3,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_4 ],     SG_PORT_LED_RED_4,     PORT_OUTPUT);
 
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_ERROR ], PORT_LED_ERROR, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_LED_POWER ], PORT_LED_POWER, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_ERROR ],     SG_PORT_LED_ERROR,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_POWER ],     SG_PORT_LED_POWER,     PORT_OUTPUT);
 
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_SWITCH_4 ], PORT_SWITCH_4, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_SWITCH_3 ], PORT_SWITCH_3, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_SWITCH_2 ], PORT_SWITCH_2, PORT_OUTPUT);
-  MAX7313_Pin_Mode( ledDrivers[ CHIP_SWITCH_1 ], PORT_SWITCH_1, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_4 ],      SG_PORT_SWITCH_4,      PORT_INPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_3 ],      SG_PORT_SWITCH_3,      PORT_INPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_2 ],      SG_PORT_SWITCH_2,      PORT_INPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_1 ],      SG_PORT_SWITCH_1,      PORT_INPUT);
 
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_INV1_ON, PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_INV2_ON, PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K1,    PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K2,    PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K3,    PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_RELAY_K4,    PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_ACDC_ON, PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_FET_CELL_ON, PORT_OUTPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O1,     PORT_INPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O2,     PORT_INPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O3,     PORT_INPUT);
-  MAX7313_Pin_Mode( &fetDriver, PORT_OPTO_O4,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_INV1_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_INV2_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K1,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K2,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K3,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K4,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_ACDC_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_CELL_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O1,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O2,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O3,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O4,     PORT_INPUT);
 
-  MAX7313_Init(&ioDriver_1, &hi2c1, ADDRESS_MAX7313_HUI_1);
-  MAX7313_Init(&ioDriver_2, &hi2c1, ADDRESS_MAX7313_HUI_2);
+  MAX7313_Init(&huiIODriver_1, &hi2c1, ADDRESS_MAX7313_HUI_1);
+  MAX7313_Init(&huiIODriver_2, &hi2c1, ADDRESS_MAX7313_HUI_2);
   MAX7313_Init(&fetDriver,  &hi2c1, ADDRESS_MAX7313_DCDC_FET);
-  MAX7313_Interrupt_Enable(&ioDriver_2);
+  MAX7313_Interrupt_Enable(&huiIODriver_2);
   MAX7313_Interrupt_Enable(&fetDriver);
 }
+
 
 /* STATE MACHINE Begin */
 typedef enum {St_SG_Off, St_SG_On, N_States} state_t;
@@ -179,9 +181,8 @@ typedef state_t state_func_t(void);
 state_t state_func_sg_off(void){
   if( button_states_new.SW5 > button_states_old.SW5 ){   // button pressed
     printf("turning ON\n");
-    HAL_GPIO_WritePin( SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_SET );
-    HAL_GPIO_WritePin( SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_SET );
-    MAX7313_Pin_Write( ledDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 14);
+    MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_5 ], SG_PORT_LED_GRN_5, SG_HUI_LED_BRIGHT_ON);
+		display_delay = 20000;
     return St_SG_On;
   }
   return St_SG_Off;
@@ -193,23 +194,87 @@ state_t state_func_sg_on(void){
     printf("turning OFF\n");
     HAL_GPIO_WritePin( SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_RESET );
     HAL_GPIO_WritePin( SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_RESET );
-    MAX7313_Pin_Write( ledDrivers[ CHIP_LED_GRN_5 ], PORT_LED_GRN_5, 15);
-    return St_SG_Off;
+    MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_5 ], SG_PORT_LED_GRN_5, 15);
+		/** @todo restliche Funktionen ausschalten */
+		SG_LED_SetAll(15);
+		SG_Enabled_Solar = 0;
+		SG_Enabled_AC = 0;
+		SG_Enabled_DC = 0;
+		SG_Enabled_USB = 0;
+		printf("OFF\n");
+		
+    return St_SG_Off;   // back to OFF State
   }
 	/* BEGIN Silentgenerator MAIN LOOP */
 	
 	/** @todo: dem Programmvorschlag entsprechend */
-	/* BUTTON AC */
-	if(button_states_new.SW1 < button_states_old.SW1){    // active low
+	
+	display_delay += SG_TIME_DEBOUNCE;
+		
+	if(display_delay >= 5000){
+		SG_BAT_LED_Update(ADC_Buf[2], 0);
+		printf("Vint:\t%d\t%0.4f V\t%d\n", ADC_Buf[2], \
+		SG_ADC_GetVint(ADC_Buf[2]), \
+		SG_BAT_LED_GetLevel(SG_ADC_GetVint(ADC_Buf[2])));
+		SG_BAT_LED_Update(ADC_Buf[2], 1);
+		display_delay = 0;
 	}
-	/* BUTTON USB */
-	if(button_states_new.SW2 < button_states_old.SW2){    // active low
+	
+	/* BUTTON SOLAR */
+	if(button_action_required.SW1){
+		button_action_required.SW1 = 0;
+		if(SG_Enabled_Solar){
+			printf("Solar is OFF\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_1 ], SG_PORT_LED_GRN_1, SG_BAT_LED_BRIGHT_OFF);
+			SG_Enabled_Solar = 0;
+		} else {
+			printf("Solar is ON\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_1 ], SG_PORT_LED_GRN_1, SG_BAT_LED_BRIGHT_ON);
+			SG_Enabled_Solar = 1;
+		}
 	}
 	/* BUTTON DC */
-	if(button_states_new.SW3 < button_states_old.SW3){    // active low
+	if(button_action_required.SW2){
+		button_action_required.SW2 = 0;
+		if(SG_Enabled_DC){
+			printf("DC is OFF\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_2 ], SG_PORT_LED_GRN_2, SG_BAT_LED_BRIGHT_OFF);
+			SG_Enabled_DC = 0;
+		} else {
+			printf("DC is ON\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_2 ], SG_PORT_LED_GRN_2, SG_HUI_LED_BRIGHT_ON);
+			SG_Enabled_DC = 1;
+		}
 	}
-	/* BUTTON SOLAR */
-	if(button_states_new.SW4 < button_states_old.SW4){    // active low
+	/* BUTTON USB */
+	if(button_action_required.SW3){
+		button_action_required.SW3 = 0;
+		if(SG_Enabled_USB){
+			printf("USB is OFF\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_3 ], SG_PORT_LED_GRN_3, SG_BAT_LED_BRIGHT_OFF);
+			SG_Enabled_USB = 0;
+			HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin( SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_RESET );
+		} else {
+			printf("USB is ON\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_3 ], SG_PORT_LED_GRN_3, SG_BAT_LED_BRIGHT_ON);
+			SG_Enabled_USB = 1;
+			HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin( SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_SET );
+		}
+	}
+	/* BUTTON AC */
+	if(button_action_required.SW4){
+		button_action_required.SW4 = 0;
+		if(SG_Enabled_AC){
+			printf("AC is OFF\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_4 ], SG_PORT_LED_GRN_4, SG_BAT_LED_BRIGHT_OFF);
+			SG_Enabled_AC = 0;
+		} else {
+			printf("AC is ON\n");
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_4 ], SG_PORT_LED_GRN_4, SG_BAT_LED_BRIGHT_ON);
+			SG_Enabled_AC = 1;
+		}
 	}
 	
 	/* END Silentgenerator MAIN LOOP */
@@ -302,11 +367,14 @@ int main(void)
   button_states_old.SW5 = 0;
   
   state_t state = St_SG_Off;
-	uint8_t temp_set = 0;
 	
-	printf("ETA Systems Silentgenerator\n");
-	printf("Embedded Software Version (in development)\n");
+	printf("\nETA Systems Silentgenerator\n");
+	printf("Embedded Software Version (in development)\n\n");
   SG_I2C_ScanAddresses(&hi2c1);
+	SG_LED_SetAll(15);
+	MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_ERROR ], SG_PORT_LED_ERROR, 0);
+	HAL_Delay(200);
+	MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_ERROR ], SG_PORT_LED_ERROR, 15);
 	
   /* USER CODE END 2 */
 
@@ -318,51 +386,16 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 		
-    SG_BTN_ReadAll(&button_states_new); // old button state
-    state = run_state(state);
-    HAL_Delay(100);
-    button_states_old = button_states_new;
+    /* MAIN PROGRAM LOOP */
+    SG_BTN_ReadSW5(&button_states_new);      // poll SW5 state
+    state = run_state(state);                // run state machine
+		HAL_Delay(SG_TIME_DEBOUNCE);             // wait for 10~50ms
+		button_states_old = button_states_new;   // refresh button states
+		
     //printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
     ADC2Volt(ADC_Buf[0]), (ADC2Volt(ADC_Buf[1])/0.01f)/50.0f, ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
     ADC2Volt(ADC_Buf[4]), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
-    
-		printf("Vint:\t%d\t%0.4f V\t%d\%\n", ADC_Buf[2], \
-		SG_ADC_GetVint(ADC_Buf[2]), \
-		SG_BAT_LED_GetLevel(SG_ADC_GetVint(ADC_Buf[2])));
-		SG_BAT_LED_Update(ADC_Buf[2], 1);
-		HAL_Delay(100);
 		
-    /*
-    for(uint8_t i=0; i<10; i++){
-      MAX7313_Pin_Write( &fetDriver, i, NO_PWM_LOW);
-    }
-    MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_LOW);
-    MAX7313_Pin_Write( &ioDriver_2, 8, NO_PWM_LOW);
-    HAL_Delay(1000);
-    for(uint8_t i=0; i<10; i++){
-      MAX7313_Pin_Write( &fetDriver, i, NO_PWM_HIGH);
-    }
-    MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_HIGH);
-    MAX7313_Pin_Write( &ioDriver_2, 8, NO_PWM_HIGH);
-    HAL_Delay(1000);
-    */
-		
-		/*
-		if(HAL_GPIO_ReadPin(Temp_Set_GPIO_Port, Temp_Set_Pin) != temp_set){
-			MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_LOW);
-		} else {
-			MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_HIGH);
-		}
-		temp_set = HAL_GPIO_ReadPin(Temp_Set_GPIO_Port, Temp_Set_Pin);
-		HAL_Delay(100);
-		*/
-		
-		/*
-		MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_HIGH);
-		HAL_Delay(1000);
-		MAX7313_Pin_Write( &ioDriver_1, 8, NO_PWM_LOW);
-		HAL_Delay(1000);
-		*/
   }
   /* USER CODE END 3 */
 

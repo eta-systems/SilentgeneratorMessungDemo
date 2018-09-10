@@ -38,10 +38,9 @@
 /* USER CODE BEGIN 0 */
 #include "max7313.h"
 #include "silentgenerator.h"
-extern MAX7313 ioDriver_2;
-extern uint8_t interrupt_val;
+extern MAX7313 huiIODriver_2;
 extern uint8_t led_mode;
-extern SGButtons button_states_old, button_states_new;
+extern SGButtons button_states_old, button_states_new, button_action_required;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -225,37 +224,40 @@ void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
-	  if(__HAL_GPIO_EXTI_GET_FLAG(Interrupt_HMI2_Pin)){
-			/*
-			MAX7313_Interrupt_Clear(&ioDriver_2);
-			if(!MAX7313_Pin_Read(&ioDriver_2, 1))   // active low
-				led_mode = 0;
-			
-			if(!MAX7313_Pin_Read(&ioDriver_2, 2))
-				led_mode = 1;
-			
-			if(!MAX7313_Pin_Read(&ioDriver_2, 3))
-				led_mode = 2;
-			
-			if(!MAX7313_Pin_Read(&ioDriver_2, 4))
-				led_mode = 3;
-			*/
-
-      /** @Todo: new button states einlesen */
-			//button_states_new.SW1 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_1);
-		  //button_states_new.SW2 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_2);
-		  //button_states_new.SW3 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_3);
-		  //button_states_new.SW4 = MAX7313_Pin_Read(&ioDriver_2, PORT_SWITCH_4);
-
-			uint8_t io_states = 0;
-			MAX7313_Read8(&ioDriver_2, MAX7313_READ_IN_00_07, &io_states);
-      /** @Todo: test masking and bitshifting */
-			button_states_new.SW1 = (io_states & (1 << PORT_SWITCH_1)) >> PORT_SWITCH_1;
-      button_states_new.SW2 = (io_states & (1 << PORT_SWITCH_2)) >> PORT_SWITCH_2;
-      button_states_new.SW3 = (io_states & (1 << PORT_SWITCH_3)) >> PORT_SWITCH_3;
-      button_states_new.SW4 = (io_states & (1 << PORT_SWITCH_4)) >> PORT_SWITCH_4;
-      
-		}
+	// EXTI 5 HMI2
+	if(__HAL_GPIO_EXTI_GET_FLAG(Interrupt_HMI2_Pin)){
+		MAX7313_Interrupt_Clear(&huiIODriver_2);
+		
+		uint8_t io_states = 0;
+		MAX7313_Read8(&huiIODriver_2, MAX7313_READ_IN_00_07, &io_states);  // this also clears the interrupt condition on the MAX7313
+		button_states_new.SW1 = (io_states & (1 << (SG_PORT_SWITCH_1))) >> (SG_PORT_SWITCH_1);
+		button_states_new.SW2 = (io_states & (1 << (SG_PORT_SWITCH_2))) >> (SG_PORT_SWITCH_2);
+		button_states_new.SW3 = (io_states & (1 << (SG_PORT_SWITCH_3))) >> (SG_PORT_SWITCH_3);
+		button_states_new.SW4 = (io_states & (1 << (SG_PORT_SWITCH_4))) >> (SG_PORT_SWITCH_4);
+		
+		// decide if a button action is required
+		// buttons are LOW-active
+		button_action_required.SW1 = (button_states_new.SW1 < button_states_old.SW1);
+		button_action_required.SW2 = (button_states_new.SW2 < button_states_old.SW2);
+		button_action_required.SW3 = (button_states_new.SW3 < button_states_old.SW3);
+		button_action_required.SW4 = (button_states_new.SW4 < button_states_old.SW4);
+		
+	}
+	
+	// EXTI 6 Temp_Set
+	if(__HAL_GPIO_EXTI_GET_FLAG(Temp_Set_Pin)){
+		/** @todo Error handling */
+	}
+	
+	// EXTI 7 USB-Flag
+	if(__HAL_GPIO_EXTI_GET_FLAG(USB_Flag_Pin)){
+		/** @todo Error handling */
+	}
+	
+	// EXTI 8 Fan_Fail
+	if(__HAL_GPIO_EXTI_GET_FLAG(Fan_Fail_Pin)){
+		/** @todo Error handling */
+	}
 		
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
