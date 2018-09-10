@@ -41,6 +41,7 @@
 extern MAX7313 huiIODriver_2;
 extern uint8_t led_mode;
 extern SGButtons button_states_old, button_states_new, button_action_required;
+extern uint8_t ERR_FLAG_USB;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -251,7 +252,10 @@ void EXTI9_5_IRQHandler(void)
 	
 	// EXTI 7 USB-Flag
 	if(__HAL_GPIO_EXTI_GET_FLAG(USB_Flag_Pin)){
-		/** @todo Error handling */
+		// immediately turn OFF the USB and Raspberry Pi 5V power
+		ERR_FLAG_USB = 1;
+		HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_RESET );
 	}
 	
 	// EXTI 8 Fan_Fail

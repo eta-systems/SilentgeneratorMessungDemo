@@ -110,6 +110,8 @@ static uint8_t 	SG_Enabled_USB = 0, \
 								SG_Enabled_DC = 0;
 volatile uint32_t display_delay = 0;
 
+volatile uint8_t ERR_FLAG_USB = 0;
+
 /** @todo move to silentgenerator.c */
 static void SG_MAX7313_Init(){
   huiIODriver_1 = new_MAX7313();
@@ -258,6 +260,7 @@ state_t state_func_sg_on(void){
 		} else {
 			printf("USB is ON\n");
 			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_3 ], SG_PORT_LED_GRN_3, SG_BAT_LED_BRIGHT_ON);
+			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_RED_3 ], SG_PORT_LED_RED_3, SG_BAT_LED_BRIGHT_OFF);
 			SG_Enabled_USB = 1;
 			HAL_GPIO_WritePin(SG_USBPowerOn_GPIO_Port, SG_USBPowerOn_Pin, GPIO_PIN_SET);
 			HAL_GPIO_WritePin( SG_5V_Power_On_GPIO_Port, SG_5V_Power_On_Pin, GPIO_PIN_SET );
@@ -275,6 +278,15 @@ state_t state_func_sg_on(void){
 			MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_4 ], SG_PORT_LED_GRN_4, SG_BAT_LED_BRIGHT_ON);
 			SG_Enabled_AC = 1;
 		}
+	}
+	
+	/* ERROR FLAGS from Interrupt Pins */
+	if(ERR_FLAG_USB){
+		ERR_FLAG_USB = 0;
+		printf("USB ERROR - USB is OFF\n");
+		MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_GRN_3 ], SG_PORT_LED_GRN_3, SG_BAT_LED_BRIGHT_OFF);
+		MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_RED_3 ], SG_PORT_LED_RED_3, SG_BAT_LED_BRIGHT_ON);
+		SG_Enabled_USB = 0;
 	}
 	
 	/* END Silentgenerator MAIN LOOP */
