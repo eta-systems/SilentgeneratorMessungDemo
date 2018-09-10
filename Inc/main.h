@@ -64,6 +64,9 @@
 #define V_int_GPIO_Port GPIOA
 #define V_USB_Pin GPIO_PIN_5
 #define V_USB_GPIO_Port GPIOA
+#define Temp_Set_Pin GPIO_PIN_6
+#define Temp_Set_GPIO_Port GPIOA
+#define Temp_Set_EXTI_IRQn EXTI9_5_IRQn
 #define SHD_MPPT_Pin GPIO_PIN_0
 #define SHD_MPPT_GPIO_Port GPIOB
 #define Fault_MPPT_Pin GPIO_PIN_1

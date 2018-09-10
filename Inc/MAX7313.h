@@ -52,8 +52,11 @@
 #define MAX7313_OUT_INT_13_12       	0x16
 #define MAX7313_OUT_INT_15_14       	0x17
 
-#define PORT_OUTPUT 0
-#define PORT_INPUT  1
+#define PORT_OUTPUT   0
+#define PORT_INPUT    1
+
+#define NO_PWM_HIGH   15
+#define NO_PWM_LOW    0
 
 #define __max7313_get_regmask(port) (1<<(port%8))
 #define __max7313_get_input_reg(port) ((port < 8) ? MAX7313_READ_IN_00_07 : MAX7313_READ_IN_08_15)
