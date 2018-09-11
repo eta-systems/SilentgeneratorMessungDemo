@@ -16,7 +16,78 @@
 #include "main.h"
 #include "stm32f3xx_hal.h"
 
+extern I2C_HandleTypeDef hi2c1;
+
 extern MAX7313* ledDrivers[3];
+extern MAX7313 huiIODriver_1;
+extern MAX7313 huiIODriver_2;
+extern MAX7313 fetDriver;
+
+/* INITIALIZATION -------------------------------------------------------------*/
+void SG_MAX7313_Init(){
+  huiIODriver_1 = new_MAX7313();
+  huiIODriver_2 = new_MAX7313();
+  fetDriver  = new_MAX7313();
+  
+  ledDrivers[0] = &huiIODriver_1;  // this array contains 3 items so that the chip number (U1, U2)
+  ledDrivers[1] = &huiIODriver_1;  // match the array indexes
+  ledDrivers[2] = &huiIODriver_2;
+  
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_0   ], SG_PORT_LED_METER_0,   PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_10  ], SG_PORT_LED_METER_10,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_20  ], SG_PORT_LED_METER_20,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_30  ], SG_PORT_LED_METER_30,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_40  ], SG_PORT_LED_METER_40,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_50  ], SG_PORT_LED_METER_50,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_60  ], SG_PORT_LED_METER_60,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_70  ], SG_PORT_LED_METER_70,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_80  ], SG_PORT_LED_METER_80,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_90  ], SG_PORT_LED_METER_90,  PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_100 ], SG_PORT_LED_METER_100, PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_METER_110 ], SG_PORT_LED_METER_110, PORT_OUTPUT);
+  
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_1 ],     SG_PORT_LED_GRN_1,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_2 ],     SG_PORT_LED_GRN_2,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_3 ],     SG_PORT_LED_GRN_3,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_4 ],     SG_PORT_LED_GRN_4,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_GRN_5 ],     SG_PORT_LED_GRN_5,     PORT_OUTPUT);
+
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_1 ],     SG_PORT_LED_RED_1,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_2 ],     SG_PORT_LED_RED_2,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_3 ],     SG_PORT_LED_RED_3,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_RED_4 ],     SG_PORT_LED_RED_4,     PORT_OUTPUT);
+
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_ERROR ],     SG_PORT_LED_ERROR,     PORT_OUTPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_LED_POWER ],     SG_PORT_LED_POWER,     PORT_OUTPUT);
+
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_4 ],      SG_PORT_SWITCH_4,      PORT_INPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_3 ],      SG_PORT_SWITCH_3,      PORT_INPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_2 ],      SG_PORT_SWITCH_2,      PORT_INPUT);
+  MAX7313_Pin_Mode( ledDrivers[ SG_CHIP_SWITCH_1 ],      SG_PORT_SWITCH_1,      PORT_INPUT);
+
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_INV1_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_INV2_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K1,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K2,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K3,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_RELAY_K4,    PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_ACDC_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_FET_CELL_ON, PORT_OUTPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O1,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O2,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O3,     PORT_INPUT);
+  MAX7313_Pin_Mode( &fetDriver, SG_PORT_OPTO_O4,     PORT_INPUT);
+
+  MAX7313_Init(&huiIODriver_1, &hi2c1, SG_ADDRESS_MAX7313_HUI_1);
+  MAX7313_Init(&huiIODriver_2, &hi2c1, SG_ADDRESS_MAX7313_HUI_2);
+  MAX7313_Init(&fetDriver,  &hi2c1, SG_ADDRESS_MAX7313_DCDC_FET);
+  MAX7313_Interrupt_Enable(&huiIODriver_2);
+  MAX7313_Interrupt_Enable(&fetDriver);
+}
+
+void SG_LTC3886_Init(void){
+	
+}
 
 void SG_BTN_ReadSW5(volatile SGButtons *buttons){
 	if ( HAL_GPIO_ReadPin(SG_Switch_WKUP_GPIO_Port, SG_Switch_WKUP_Pin) == GPIO_PIN_SET)
@@ -31,7 +102,7 @@ void SG_I2C_ScanAddresses(I2C_HandleTypeDef *hi2c){
 	uint8_t error, address;
 	uint16_t nDevices;
 	nDevices = 0;
-	printf("Scanning for available I2C devices...");
+	printf("Scanning for available I2C devices...\n");
 	for(address = 1; address < 127; address++ )
 	{
 		HAL_Delay(10);
@@ -53,6 +124,7 @@ void SG_I2C_ScanAddresses(I2C_HandleTypeDef *hi2c){
 		printf("done\n");
 }
 
+/* ADC Values -----------------------------------------------------------------*/
 float SG_ADC2Volt(uint32_t adc_val){
 	/**
 	ADC Values vs. Voltage
@@ -94,6 +166,20 @@ float SG_TEMPIntCelsius(float Vtemp){
 	return temperature;
 }
 
+float SG_ADC_GetVint(uint32_t adc){
+	/** Messung vom 2018.09.07 in Derendingen 
+	ADC		 Vint
+	 972    5.4409
+	1763   11.2525
+	2021   13.1705
+	2320   15.4178
+	*/
+	float m = 0.007478;  // V / LSB
+	float q = -1.9312f;  // V offset
+	return ((float)adc) * m + q;
+}
+
+/* LEDs -----------------------------------------------------------------------*/
 // must be realized as a function because global array definitions are not possible
 uint8_t SG_MAX7313_LED_RED_Ports(uint8_t n){
 	return arr_MAX7313_LED_RED_Ports[n];
@@ -189,17 +275,5 @@ uint16_t SG_BAT_LED_GetLevel(float volt){
 	return (uint16_t)((volt * m) + q);
 }
 
-float SG_ADC_GetVint(uint32_t adc){
-	/** Messung vom 2018.09.07 in Derendingen 
-	ADC		 Vint
-	 972    5.4409
-	1763   11.2525
-	2021   13.1705
-	2320   15.4178
-	*/
-	float m = 0.007478;  // V / LSB
-	float q = -1.9312f;  // V offset
-	return ((float)adc) * m + q;
-}
 
 

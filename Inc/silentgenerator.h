@@ -7,9 +7,15 @@
 #ifndef __SILENTGENERATOR_H
 #define __SILENTGENERATOR_H
 
-/* Public define -------------------------------------------------------------*/
-
 /* USER SETTINGS Application Specific ----------------------------------------*/
+#define SG_ADDRESS_MAX7313_HUI_1    0x42
+#define SG_ADDRESS_MAX7313_HUI_2    0x44
+#define SG_ADDRESS_MAX7313_DCDC_FET 0x40
+#define SG_ADDRESS_MAX11615_DCDC_1  0x66
+#define SG_ADDRESS_MAX3440X_MPPT_1  0x34
+#define SG_ADDRESS_MAX6615 					0x30   // PWM Fan Controller
+#define SG_ADDRESS_MAX3886          0x5A   // not working yet
+
 /** @todo get accurate battery voltage-chargelevel curves */
 #define SG_12V_BAT_LEV_VOLT_100  (14.340f)
 #define SG_12V_BAT_LEV_VOLT_90   (13.300f)
@@ -28,7 +34,6 @@
 #define SG_BAT_LED_BRIGHT_OFF   15
 
 #define SG_TIME_DEBOUNCE        50
-
 
 /* END USER SETTINGS ---------------------------------------------------------*/
 // LED / Button Ports
@@ -105,60 +110,60 @@
 #define SG_PORT_OPTO_O4        13
 
 // GPIO Pins / PORTS
-#define SG_Switch_WKUP_Pin 				GPIO_PIN_13
-#define SG_Switch_WKUP_GPIO_Port 		GPIOC
-#define SG_U23_ALERT_Pin 				GPIO_PIN_0
-#define SG_U23_ALERT_GPIO_Port 			GPIOC
-#define SG_U23_RUN1_Pin 				GPIO_PIN_1
-#define SG_U23_RUN1_GPIO_Port 			GPIOC
-#define SG_U23_RUN0_Pin 				GPIO_PIN_2
-#define SG_U23_RUN0_GPIO_Port 			GPIOC
-#define SG_Alert_CM_Pin 				GPIO_PIN_3
-#define SG_Alert_CM_GPIO_Port 			GPIOC
-#define SG_Solar_Voltage_Pin 			GPIO_PIN_0
-#define SG_Solar_Voltage_GPIO_Port 		GPIOA
-#define SG_I_Out_Pin 					GPIO_PIN_1
-#define SG_I_Out_GPIO_Port 				GPIOA
-#define SG_V_int_Pin 					GPIO_PIN_4
-#define SG_V_int_GPIO_Port 				GPIOA
-#define SG_V_USB_Pin 					GPIO_PIN_5
-#define SG_V_USB_GPIO_Port 				GPIOA
-#define SG_SHD_MPPT_Pin 				GPIO_PIN_0
-#define SG_SHD_MPPT_GPIO_Port 			GPIOB
-#define SG_Fault_MPPT_Pin 				GPIO_PIN_1
-#define SG_Fault_MPPT_GPIO_Port 		GPIOB
-#define SG_EN2_VccS_Pin 				GPIO_PIN_2
-#define SG_EN2_VccS_GPIO_Port 			GPIOB
-#define SG_SS_Pin 						GPIO_PIN_8
-#define SG_SS_GPIO_Port 				GPIOE
-#define SG_ACDC_On_Pin 					GPIO_PIN_6
-#define SG_ACDC_On_GPIO_Port 			GPIOC
-#define SG_Fan_Fail_Pin 				GPIO_PIN_8
-#define SG_Fan_Fail_GPIO_Port 			GPIOC
-#define SG_Fan_Fail_EXTI_IRQn 			EXTI9_5_IRQn
-#define SG_OT_Fan_Pin 					GPIO_PIN_9
-#define SG_OT_Fan_GPIO_Port 			GPIOC
-#define SG_OT_Fan_EXTI_IRQn 			EXTI9_5_IRQn
-#define SG_Fet1_Pin 					GPIO_PIN_9
-#define SG_Fet1_GPIO_Port 				GPIOA
-#define SG_Fet2_Pin 					GPIO_PIN_10
-#define SG_Fet2_GPIO_Port 				GPIOA
-#define SG_USBPowerOn_Pin 				GPIO_PIN_6
-#define SG_USBPowerOn_GPIO_Port 		GPIOF
-#define SG_RaspberryGPIO2_Pin 			GPIO_PIN_7
-#define SG_RaspberryGPIO2_GPIO_Port 	GPIOF
-#define SG_U61_PGOOD2_Pin 				GPIO_PIN_12
-#define SG_U61_PGOOD2_GPIO_Port 		GPIOC
-#define SG_U61_PGOOD1_Pin 				GPIO_PIN_2
-#define SG_U61_PGOOD1_GPIO_Port 		GPIOD
-#define SG_Interrupt_HMI2_Pin 			GPIO_PIN_5
-#define SG_Interrupt_HMI2_GPIO_Port 	GPIOB
-#define SG_Interrupt_HMI2_EXTI_IRQn 	EXTI9_5_IRQn
-#define SG_5V_Power_On_Pin 				GPIO_PIN_6
-#define SG_5V_Power_On_GPIO_Port 		GPIOB
-#define SG_USB_Flag_Pin 				GPIO_PIN_7
-#define SG_USB_Flag_GPIO_Port 			GPIOB
-#define SG_USB_Flag_EXTI_IRQn 			EXTI9_5_IRQn
+#define SG_Switch_WKUP_Pin            GPIO_PIN_13
+#define SG_Switch_WKUP_GPIO_Port      GPIOC
+#define SG_U23_ALERT_Pin              GPIO_PIN_0
+#define SG_U23_ALERT_GPIO_Port        GPIOC
+#define SG_U23_RUN1_Pin               GPIO_PIN_1
+#define SG_U23_RUN1_GPIO_Port         GPIOC
+#define SG_U23_RUN0_Pin               GPIO_PIN_2
+#define SG_U23_RUN0_GPIO_Port         GPIOC
+#define SG_Alert_CM_Pin               GPIO_PIN_3
+#define SG_Alert_CM_GPIO_Port         GPIOC
+#define SG_Solar_Voltage_Pin          GPIO_PIN_0
+#define SG_Solar_Voltage_GPIO_Port    GPIOA
+#define SG_I_Out_Pin                  GPIO_PIN_1
+#define SG_I_Out_GPIO_Port            GPIOA
+#define SG_V_int_Pin                  GPIO_PIN_4
+#define SG_V_int_GPIO_Port            GPIOA
+#define SG_V_USB_Pin                  GPIO_PIN_5
+#define SG_V_USB_GPIO_Port            GPIOA
+#define SG_SHD_MPPT_Pin               GPIO_PIN_0
+#define SG_SHD_MPPT_GPIO_Port         GPIOB
+#define SG_Fault_MPPT_Pin             GPIO_PIN_1
+#define SG_Fault_MPPT_GPIO_Port       GPIOB
+#define SG_EN2_VccS_Pin               GPIO_PIN_2
+#define SG_EN2_VccS_GPIO_Port         GPIOB
+#define SG_SS_Pin                     GPIO_PIN_8
+#define SG_SS_GPIO_Port               GPIOE
+#define SG_ACDC_On_Pin                GPIO_PIN_6
+#define SG_ACDC_On_GPIO_Port          GPIOC
+#define SG_Fan_Fail_Pin               GPIO_PIN_8
+#define SG_Fan_Fail_GPIO_Port         GPIOC
+#define SG_Fan_Fail_EXTI_IRQn         EXTI9_5_IRQn
+#define SG_OT_Fan_Pin                 GPIO_PIN_9
+#define SG_OT_Fan_GPIO_Port           GPIOC
+#define SG_OT_Fan_EXTI_IRQn           EXTI9_5_IRQn
+#define SG_Fet1_Pin                   GPIO_PIN_9
+#define SG_Fet1_GPIO_Port             GPIOA
+#define SG_Fet2_Pin                   GPIO_PIN_10
+#define SG_Fet2_GPIO_Port             GPIOA
+#define SG_USBPowerOn_Pin             GPIO_PIN_6
+#define SG_USBPowerOn_GPIO_Port       GPIOF
+#define SG_RaspberryGPIO2_Pin         GPIO_PIN_7
+#define SG_RaspberryGPIO2_GPIO_Port   GPIOF
+#define SG_U61_PGOOD2_Pin             GPIO_PIN_12
+#define SG_U61_PGOOD2_GPIO_Port       GPIOC
+#define SG_U61_PGOOD1_Pin             GPIO_PIN_2
+#define SG_U61_PGOOD1_GPIO_Port       GPIOD
+#define SG_Interrupt_HMI2_Pin         GPIO_PIN_5
+#define SG_Interrupt_HMI2_GPIO_Port   GPIOB
+#define SG_Interrupt_HMI2_EXTI_IRQn   EXTI9_5_IRQn
+#define SG_5V_Power_On_Pin            GPIO_PIN_6
+#define SG_5V_Power_On_GPIO_Port      GPIOB
+#define SG_USB_Flag_Pin               GPIO_PIN_7
+#define SG_USB_Flag_GPIO_Port         GPIOB
+#define SG_USB_Flag_EXTI_IRQn         EXTI9_5_IRQn
 
 static const uint8_t arr_MAX7313_LED_RED_Ports[4] = {
   SG_PORT_LED_RED_1,
@@ -228,10 +233,12 @@ typedef struct {
 	uint8_t SW5;
 } SGButtons;
 
-void     SG_BTN_ReadSW5        (volatile SGButtons *buttons);
-void     SG_I2C_ScanAddresses  (I2C_HandleTypeDef *hi2c);
-float    SG_ADC2Volt           (uint32_t adc_val);
-float    SG_MAX_ADC2Volt       (uint32_t adc_val);
+void     SG_MAX7313_Init          (void);
+void     SG_LTC3886_Init          (void);
+void     SG_BTN_ReadSW5           (volatile SGButtons *buttons);
+void     SG_I2C_ScanAddresses     (I2C_HandleTypeDef *hi2c);
+float    SG_ADC2Volt              (uint32_t adc_val);
+float    SG_MAX_ADC2Volt          (uint32_t adc_val);
 float    SG_TEMPIntCelsius        (float Vtemp);
 uint8_t  SG_MAX7313_LED_RED_Ports (uint8_t);
 uint8_t  SG_MAX7313_LED_GRN_Ports (uint8_t);

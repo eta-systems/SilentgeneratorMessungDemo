@@ -415,6 +415,16 @@
               <FileType>1</FileType>
               <FilePath>..\Src\MAX3440X.c</FilePath>
             </File>
+            <File>
+              <FileName>LTC3886.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\LTC3886.c</FilePath>
+            </File>
+            <File>
+              <FileName>max6615.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\max6615.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
