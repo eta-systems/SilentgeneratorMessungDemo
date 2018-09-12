@@ -47,8 +47,9 @@
 #include "ltc3886.h"      // DCDC Buck Converter
 #include "max6615.h"      // PWM Fan Controller
 
-#include "string.h"
+#include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 /* USER CODE END Includes */
 
@@ -327,8 +328,15 @@ int main(void)
 	MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_ERROR ], SG_PORT_LED_ERROR, 0);
 	HAL_Delay(200);
 	MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_ERROR ], SG_PORT_LED_ERROR, 15);
+	uint8_t pwmspeed1 = 0, pwmspeed2 = 0;
+	//MAX6615_PWM_EnableManual(&fanDriver, 1);
+	//MAX6615_PWM_EnableManual(&fanDriver, 2);
+  MAX6615_PWM_EnableAutomatic(&fanDriver, 1, 10, 50);
+  MAX6615_PWM_EnableAutomatic(&fanDriver, 2, 10, 50);
+	MAX6615_SetTempOffset(&fanDriver, 1, -5);
+	MAX6615_SetTempOffset(&fanDriver, 2, -6);
 	
-  /* USER CODE END 2 */
+	/* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -345,12 +353,22 @@ int main(void)
 		button_states_old = button_states_new;   // refresh button states
 		
 		HAL_Delay(500);
-		uint8_t asdf = 0;
-		float temp1 = 0.0f, temp2 = 0.0;
+		
+		/** @todo work on the LTC3886 library */
 		//LTC3886_Read8(&dcdc12VDriver, LTC3886_MFR_ID, &asdf);
+		
+		/*
+		// Fan Controller Chip
+		float temp1 = 0.0f, temp2 = 0.0;
 		MAX6615_ReadTemperature(&fanDriver, 1, &temp1);
 		MAX6615_ReadTemperature(&fanDriver, 2, &temp2);
-		printf("CH1:\t%.3f\tCH2:\t%.3f\n", temp1, temp2);
+		//MAX6615_PWM_SetPWM(&fanDriver, 1, pwmspeed);
+		//MAX6615_PWM_SetPWM(&fanDriver, 2, pwmspeed);
+		MAX6615_Read8(&fanDriver, MAX6615_PWM_1_INSTA_DC, &pwmspeed1);
+		MAX6615_Read8(&fanDriver, MAX6615_PWM_2_INSTA_DC, &pwmspeed2);
+		printf("CH1:\t%.3f\tCH2:\t%.3f\tFan1:\t%d\tFan2:\t%d\n", temp1, temp2, (int)(pwmspeed1/2.4f), (int)(pwmspeed2/2.4));
+		//(pwmspeed >= 99) ? pwmspeed = 0 : (pwmspeed++);
+		*/
 		
     //printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
     ADC2Volt(ADC_Buf[0]), (ADC2Volt(ADC_Buf[1])/0.01f)/50.0f, ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
