@@ -7,6 +7,7 @@
   * @brief      C library for the LTC3886 Step-Down Controller for STM32 HAL.
   * @details
   * @see        github.com/eta-systems
+  * @see        http://www.analog.com/media/en/technical-documentation/data-sheets/3886fe.pdf
   */
 
 
@@ -144,21 +145,14 @@
 #define LTC3886_MFR_RAIL_ADDRESS                0xFA 
 #define LTC3886_MFR_RESET                       0xFD
 
-
-
-
-
 typedef struct {
   uint16_t devAddress;
   I2C_HandleTypeDef *wireIface;
 } LTC3886;
 
 uint8_t LTC3886_Init              (LTC3886 *chip, I2C_HandleTypeDef* wireIface, uint16_t address);
-uint8_t LTC3886_Write8(LTC3886 *chip, uint8_t reg, uint8_t val);
-uint8_t LTC3886_Read8(LTC3886 *chip, uint8_t reg, uint8_t *val);
-uint8_t LTC3886_Write16(LTC3886 *chip, uint8_t reg, uint16_t val);
-// uint8_t LTC3886_Write16(LTC3886 *chip, uint8_t reg, uint8_t highbyte, uint8_t lowbyte);
-uint8_t LTC3886_Read16(LTC3886 *chip, uint8_t reg, uint16_t *val);
+
+
 
 #endif /* __LTC_3886_H */
 /************************ (C) COPYRIGHT ETA Systems *****END OF FILE****/

@@ -14,7 +14,7 @@
 #define SG_ADDRESS_MAX11615_DCDC_1  0x66
 #define SG_ADDRESS_MAX3440X_MPPT_1  0x34
 #define SG_ADDRESS_MAX6615 					0x30   // PWM Fan Controller
-#define SG_ADDRESS_MAX3886          0x5A   // not working yet
+#define SG_ADDRESS_LTC3886          0x01   // 5A not working yet
 
 /** @todo get accurate battery voltage-chargelevel curves */
 #define SG_12V_BAT_LEV_VOLT_100  (14.340f)

@@ -1,7 +1,8 @@
+
 /**
   ******************************************************************************
-  * File Name          : main.c
-  * Description        : Main program body
+  * @file           : main.c
+  * @brief          : Main program body
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -46,10 +47,17 @@
 #include "max3440x.h"     // 
 #include "ltc3886.h"      // DCDC Buck Converter
 #include "max6615.h"      // PWM Fan Controller
+#include "ringfs.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+
+/* Flash implementation & ops. */
+#define FLASH_SECTOR_SIZE      65535
+#define FLASH_TOTAL_SECTORS    64
+#define FLASH_PARTITION_OFFSET 8
+#define FLASH_PARTITION_SIZE   4
 
 /* USER CODE END Includes */
 
@@ -90,6 +98,54 @@ static void MX_USB_PCD_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+
+static int op_sector_erase(struct ringfs_flash_partition *flash, int address)
+{
+	(void) flash;
+	//flashsim_sector_erase(sim, address);
+	return 0;
+}
+
+static size_t op_program(struct ringfs_flash_partition *flash, int address, const void *data, size_t size)
+{
+	(void) flash;
+	//flashsim_program(sim, address, data, size);
+	// (poll until write ok?)
+	// WRITE_ENABLE (1 byte)
+	uint8_t write_enable = 0x06;
+	HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_RESET);  // slave select LOW
+	HAL_SPI_Transmit(&hspi2, &write_enable, 1, 10);
+	HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_SET);  // slave select HIGH
+	// PAGE_PROGRAM (4 bytes + data)
+	
+	return size;
+}
+
+static size_t op_read(struct ringfs_flash_partition *flash, int address, void *data, size_t size)
+{
+	(void) flash;
+	//flashsim_read(sim, address, data, size);
+	return size;
+}
+
+static struct ringfs_flash_partition flash = {
+    .sector_size = FLASH_SECTOR_SIZE,
+    .sector_offset = FLASH_PARTITION_OFFSET,
+    .sector_count = FLASH_PARTITION_SIZE,
+
+    .sector_erase = op_sector_erase,
+    .program = op_program,
+    .read = op_read,
+};
+
+
+/* Data record format. */
+struct log_entry {
+    int level;
+    char message[16];
+};
+#define LOG_ENTRY_VERSION 1
+
 
 MAX11615 adcDriver_1;
 MAX3440X adcMonitor_1;
@@ -270,9 +326,13 @@ int ferror(FILE *f){
 
 /* USER CODE END 0 */
 
+/**
+  * @brief  The application entry point.
+  *
+  * @retval None
+  */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -303,16 +363,34 @@ int main(void)
   MX_USART3_UART_Init();
   MX_ADC1_Init();
   MX_USB_PCD_Init();
-
   /* USER CODE BEGIN 2 */
   HAL_ADC_Start_DMA(&hadc1, ADC_Buf, 7);
   HAL_ADC_Start_IT(&hadc1);
   
+	/* Always call ringfs_init first. */
+	/*
+	struct ringfs fs;
+	ringfs_init(&fs, &flash, LOG_ENTRY_VERSION, sizeof(struct log_entry));
+	printf("# scanning for filesystem...\n");
+	if (ringfs_scan(&fs) == 0) {
+		printf("# found existing filesystem, usage: %d/%d\n",
+			ringfs_count_estimate(&fs),
+      ringfs_capacity(&fs));
+	} else {
+		printf("# no valid filesystem found, formatting.\n");
+		ringfs_format(&fs);
+	}
+	*/
+	
+	/* Append data using ringfs_append. Oldest data is removed as needed. */
+	//printf("# inserting some objects\n");
+	//ringfs_append(&fs, &(struct log_entry) { 1, "foo" });
+	
   // analog ref: internal + reference not connected + internal reference always on
   MAX11615_Init(&adcDriver_1, &hi2c1, SG_ADDRESS_MAX11615_DCDC_1, 4+2+1);
   SG_MAX7313_Init();
 	MAX3440X_Init(&adcMonitor_1,  &hi2c1, SG_ADDRESS_MAX3440X_MPPT_1);
-	LTC3886_Init (&dcdc12VDriver, &hi2c1, SG_ADDRESS_MAX3886);
+	LTC3886_Init (&dcdc12VDriver, &hi2c1, SG_ADDRESS_LTC3886);
 	MAX6615_Init (&fanDriver,     &hi2c1, SG_ADDRESS_MAX6615);
 	
   button_states_new.SW5 = 0;
@@ -322,7 +400,8 @@ int main(void)
 	
 	printf("\nETA Systems Silentgenerator\n");
 	printf("Embedded Software Version (in development)\n\n");
-	
+
+	HAL_Delay(1000);
   SG_I2C_ScanAddresses(&hi2c1);
 	SG_LED_SetAll(15);
 	MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_ERROR ], SG_PORT_LED_ERROR, 0);
@@ -336,7 +415,9 @@ int main(void)
 	MAX6615_SetTempOffset(&fanDriver, 1, -5);
 	MAX6615_SetTempOffset(&fanDriver, 2, -6);
 	
-	/* USER CODE END 2 */
+	uint8_t asdf[5] = {0, 0, 0, 0, 0};
+	
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -355,19 +436,34 @@ int main(void)
 		HAL_Delay(500);
 		
 		/** @todo work on the LTC3886 library */
+		asdf[0] = 65; asdf[1] = 65; asdf[2] = 65; asdf[3] = 65; asdf[4] = 65;
 		//LTC3886_Read8(&dcdc12VDriver, LTC3886_MFR_ID, &asdf);
+		pwmspeed1 = LTC3886_MFR_ID;
+		//HAL_I2C_Master_Transmit(&hi2c1, SG_ADDRESS_LTC3886, &pwmspeed1, 1, 10);
+		//HAL_I2C_Master_Receive(&hi2c1, SG_ADDRESS_LTC3886, &asdf[0], 5, 10);
+		HAL_I2C_Mem_Read(&hi2c1, SG_ADDRESS_LTC3886, LTC3886_MFR_ID, 1, asdf, 5, 10);
+		printf("MFR ID: %X %X %X %X %X \n", asdf[0], asdf[1], asdf[2], asdf[3], asdf[4]);
+		printf("string: %s %s %s\n", &asdf[1], &asdf[2], &asdf[3]);
 		
-		/*
 		// Fan Controller Chip
 		float temp1 = 0.0f, temp2 = 0.0;
-		MAX6615_ReadTemperature(&fanDriver, 1, &temp1);
-		MAX6615_ReadTemperature(&fanDriver, 2, &temp2);
+		//MAX6615_ReadTemperature(&fanDriver, 1, &temp1);
+		//MAX6615_ReadTemperature(&fanDriver, 2, &temp2);
 		//MAX6615_PWM_SetPWM(&fanDriver, 1, pwmspeed);
 		//MAX6615_PWM_SetPWM(&fanDriver, 2, pwmspeed);
-		MAX6615_Read8(&fanDriver, MAX6615_PWM_1_INSTA_DC, &pwmspeed1);
-		MAX6615_Read8(&fanDriver, MAX6615_PWM_2_INSTA_DC, &pwmspeed2);
-		printf("CH1:\t%.3f\tCH2:\t%.3f\tFan1:\t%d\tFan2:\t%d\n", temp1, temp2, (int)(pwmspeed1/2.4f), (int)(pwmspeed2/2.4));
+		// MAX6615_Read8(&fanDriver, MAX6615_PWM_1_INSTA_DC, &pwmspeed1);
+		// MAX6615_Read8(&fanDriver, MAX6615_PWM_2_INSTA_DC, &pwmspeed2);
+		// printf("Temp 1: %.3f°C Temp 2: %.3f°C Fan 1: %d%% Fan 2: %d%%\n", temp1, temp2, (int)(pwmspeed1/2.4f), (int)(pwmspeed2/2.4));
 		//(pwmspeed >= 99) ? pwmspeed = 0 : (pwmspeed++);
+		
+		/*
+		uint8_t bytes[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+		HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_RESET);  // slave select LOW
+		uint8_t command = 0x9E;
+		HAL_SPI_Transmit(&hspi2, &command, 1, 10);
+		HAL_SPI_Receive(&hspi2, bytes, 3, 10);
+		HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_SET);  // slave select HIGH
+		printf("status: 0x%02X 0x%02X 0x%02X\n", bytes[0], bytes[1], bytes[2]);
 		*/
 		
     //printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
@@ -379,8 +475,10 @@ int main(void)
 
 }
 
-/** System Clock Configuration
-*/
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
 void SystemClock_Config(void)
 {
 
@@ -467,7 +565,7 @@ static void MX_ADC1_Init(void)
     /**Configure Regular Channel 
     */
   sConfig.Channel = ADC_CHANNEL_0;
-  sConfig.Rank = 1;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -477,7 +575,7 @@ static void MX_ADC1_Init(void)
     /**Configure Regular Channel 
     */
   sConfig.Channel = ADC_CHANNEL_1;
-  sConfig.Rank = 2;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -486,7 +584,7 @@ static void MX_ADC1_Init(void)
     /**Configure Regular Channel 
     */
   sConfig.Channel = ADC_CHANNEL_4;
-  sConfig.Rank = 3;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -495,7 +593,7 @@ static void MX_ADC1_Init(void)
     /**Configure Regular Channel 
     */
   sConfig.Channel = ADC_CHANNEL_5;
-  sConfig.Rank = 4;
+  sConfig.Rank = ADC_REGULAR_RANK_4;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -504,7 +602,7 @@ static void MX_ADC1_Init(void)
     /**Configure Regular Channel 
     */
   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-  sConfig.Rank = 5;
+  sConfig.Rank = ADC_REGULAR_RANK_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -513,7 +611,7 @@ static void MX_ADC1_Init(void)
     /**Configure Regular Channel 
     */
   sConfig.Channel = ADC_CHANNEL_5;
-  sConfig.Rank = 6;
+  sConfig.Rank = ADC_REGULAR_RANK_6;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -522,7 +620,7 @@ static void MX_ADC1_Init(void)
     /**Configure Regular Channel 
     */
   sConfig.Channel = ADC_CHANNEL_VBAT;
-  sConfig.Rank = 7;
+  sConfig.Rank = ADC_REGULAR_RANK_7;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -572,11 +670,11 @@ static void MX_SPI2_Init(void)
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -828,45 +926,43 @@ static void MX_GPIO_Init(void)
 
 /**
   * @brief  This function is executed in case of error occurrence.
-  * @param  None
+  * @param  file: The file name as string.
+  * @param  line: The line in file as a number.
   * @retval None
   */
-void _Error_Handler(char * file, int line)
+void _Error_Handler(char *file, int line)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   while(1) 
   {
   }
-  /* USER CODE END Error_Handler_Debug */ 
+  /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
-
+#ifdef  USE_FULL_ASSERT
 /**
-   * @brief Reports the name of the source file and the source line number
-   * where the assert_param error has occurred.
-   * @param file: pointer to the source file name
-   * @param line: assert_param error line source number
-   * @retval None
-   */
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
 void assert_failed(uint8_t* file, uint32_t line)
-{
+{ 
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
-
 }
-
-#endif
-
-/**
-  * @}
-  */ 
+#endif /* USE_FULL_ASSERT */
 
 /**
   * @}
-*/ 
+  */
+
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
