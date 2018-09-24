@@ -13,8 +13,6 @@
 #include "main.h"
 #include "ltc3886.h"
 
-
-
 /**
   * @brief 		Initalizer function
   * @param 		*chip, pointer to the LTC3886 typedef struct
