@@ -260,18 +260,23 @@ void SG_BAT_LED_SetDot(uint8_t percent, uint8_t bright_on, uint8_t bright_off){
 	*/
 void SG_BAT_LED_Update(uint32_t adc, uint8_t fullbar){
 	if(fullbar)
-		SG_BAT_LED_SetBar( SG_BAT_LED_GetLevel( SG_ADC_GetVint(adc) ), SG_BAT_LED_BRIGHT_ON, SG_BAT_LED_BRIGHT_OFF);
+		SG_BAT_LED_SetBar( SG_Battery_StateOfCharge( SG_ADC_GetVint(adc) ), SG_BAT_LED_BRIGHT_ON, SG_BAT_LED_BRIGHT_OFF);
 	else
-		SG_BAT_LED_SetDot( SG_BAT_LED_GetLevel( SG_ADC_GetVint(adc) ), SG_BAT_LED_BRIGHT_ON, SG_BAT_LED_BRIGHT_OFF);
+		SG_BAT_LED_SetDot( SG_Battery_StateOfCharge( SG_ADC_GetVint(adc) ), SG_BAT_LED_BRIGHT_ON, SG_BAT_LED_BRIGHT_OFF);
 }
 
-uint16_t SG_BAT_LED_GetLevel(float volt){
+/**
+	* @brief 	
+	* @see 		Datasheet: www.bb-battery.com/usa/download.php?f=HR6-12.pdf.24fe96b07f7ea88e0c4bf07e441749a6&m=HR6-12.pdf
+	* @see 		https://media.digikey.com/pdf/Data%20Sheets/B%20B%20Battery%20PDFs/VRLA_Man.pdf
+	*/
+uint16_t SG_Battery_StateOfCharge(float volt){
 	/** @todo Genaue Spannungs-Prozentkurve definieren */
 	// in %/V
-	float m = (100.0f - 10.0f)/\
-		(SG_12V_BAT_LEV_VOLT_100 - SG_12V_BAT_LEV_VOLT_10);
-	float q = 100.0f - (SG_12V_BAT_LEV_VOLT_100 * m);
-	
+	// y = m*x + q
+	// [%] = [%/V] * [V] + [%]
+	float m = (100.0f) / (SG_BAT_12V_SOC_VOLT_100 - SG_BAT_12V_SOC_VOLT_000);  // (percent)% / (Voltage Range of percent)V
+	float q = 100.0f - (SG_BAT_12V_SOC_VOLT_100 * m);
 	return (uint16_t)((volt * m) + q);
 }
 

@@ -1,4 +1,4 @@
-
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -10,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -36,10 +36,12 @@
   *
   ******************************************************************************
   */
+/* USER CODE END Header */
+
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f3xx_hal.h"
 
+/* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "silentgenerator.h"
 #include "max11615.h"     // ADC
@@ -47,7 +49,7 @@
 #include "max3440x.h"     // 
 #include "ltc3886.h"      // DCDC Buck Converter
 #include "max6615.h"      // PWM Fan Controller
-#include "ringfs.h"
+// #include "ringfs.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -60,6 +62,21 @@
 #define FLASH_PARTITION_SIZE   4
 
 /* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
@@ -91,52 +108,13 @@ static void MX_SPI2_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USB_PCD_Init(void);
-
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
 /* USER CODE END PFP */
 
+/* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-static int op_sector_erase(struct ringfs_flash_partition *flash, int address)
-{
-	(void) flash;
-	//flashsim_sector_erase(sim, address);
-	return 0;
-}
-
-static size_t op_program(struct ringfs_flash_partition *flash, int address, const void *data, size_t size)
-{
-	(void) flash;
-	//flashsim_program(sim, address, data, size);
-	// (poll until write ok?)
-	// WRITE_ENABLE (1 byte)
-	uint8_t write_enable = 0x06;
-	HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_RESET);  // slave select LOW
-	HAL_SPI_Transmit(&hspi2, &write_enable, 1, 10);
-	HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_SET);  // slave select HIGH
-	// PAGE_PROGRAM (4 bytes + data)
-	
-	return size;
-}
-
-static size_t op_read(struct ringfs_flash_partition *flash, int address, void *data, size_t size)
-{
-	(void) flash;
-	//flashsim_read(sim, address, data, size);
-	return size;
-}
-
-static struct ringfs_flash_partition flash = {
-    .sector_size = FLASH_SECTOR_SIZE,
-    .sector_offset = FLASH_PARTITION_OFFSET,
-    .sector_count = FLASH_PARTITION_SIZE,
-
-    .sector_erase = op_sector_erase,
-    .program = op_program,
-    .read = op_read,
-};
 
 
 /* Data record format. */
@@ -207,11 +185,11 @@ state_t state_func_sg_on(void){
 	
 	display_delay += SG_TIME_DEBOUNCE;
 		
-	if(display_delay >= 5000){
+	if(display_delay >= 1000){
 		SG_BAT_LED_Update(ADC_Buf[2], 0);
 		printf("Vint:\t%d\t%0.4f V\t%d\n", ADC_Buf[2], \
 		SG_ADC_GetVint(ADC_Buf[2]), \
-		SG_BAT_LED_GetLevel(SG_ADC_GetVint(ADC_Buf[2])));
+		SG_Battery_StateOfCharge(SG_ADC_GetVint(ADC_Buf[2])));
 		SG_BAT_LED_Update(ADC_Buf[2], 1);
 		display_delay = 0;
 	}
@@ -328,8 +306,7 @@ int ferror(FILE *f){
 
 /**
   * @brief  The application entry point.
-  *
-  * @retval None
+  * @retval int
   */
 int main(void)
 {
@@ -337,7 +314,7 @@ int main(void)
 
   /* USER CODE END 1 */
 
-  /* MCU Configuration----------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
@@ -386,7 +363,7 @@ int main(void)
 	//printf("# inserting some objects\n");
 	//ringfs_append(&fs, &(struct log_entry) { 1, "foo" });
 	
-  // analog ref: internal + reference not connected + internal reference always on
+  // MAX11615 analog ref: internal + reference not connected + internal reference always on
   MAX11615_Init(&adcDriver_1, &hi2c1, SG_ADDRESS_MAX11615_DCDC_1, 4+2+1);
   SG_MAX7313_Init();
 	MAX3440X_Init(&adcMonitor_1,  &hi2c1, SG_ADDRESS_MAX3440X_MPPT_1);
@@ -396,18 +373,18 @@ int main(void)
   button_states_new.SW5 = 0;
   button_states_old.SW5 = 0;
   
-  state_t state = St_SG_Off;
+  state_t state = St_SG_Off; 		// start in off state
 	
 	printf("\nETA Systems Silentgenerator\n");
 	printf("Embedded Software Version (in development)\n\n");
 
 	HAL_Delay(1000);
-  SG_I2C_ScanAddresses(&hi2c1);
+  SG_I2C_ScanAddresses(&hi2c1); 	// testing: scan for available I2S devices
 	SG_LED_SetAll(15);
 	MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_ERROR ], SG_PORT_LED_ERROR, 0);
 	HAL_Delay(200);
 	MAX7313_Pin_Write( ledDrivers[ SG_CHIP_LED_ERROR ], SG_PORT_LED_ERROR, 15);
-	uint8_t pwmspeed1 = 0, pwmspeed2 = 0;
+	//uint8_t pwmspeed1 = 0, pwmspeed2 = 0;
 	//MAX6615_PWM_EnableManual(&fanDriver, 1);
 	//MAX6615_PWM_EnableManual(&fanDriver, 2);
   MAX6615_PWM_EnableAutomatic(&fanDriver, 1, 10, 50);
@@ -415,7 +392,10 @@ int main(void)
 	MAX6615_SetTempOffset(&fanDriver, 1, -5);
 	MAX6615_SetTempOffset(&fanDriver, 2, -6);
 	
-	uint8_t asdf[5] = {0, 0, 0, 0, 0};
+	SG_BTN_ReadSW5(&button_states_new);      // poll SW5 (Main SW) state
+	HAL_Delay(10);
+	
+	//uint8_t asdf[5] = {0, 0, 0, 0, 0};
 	
   /* USER CODE END 2 */
 
@@ -423,56 +403,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-  /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-  /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 		
-    /* MAIN PROGRAM LOOP */
-    SG_BTN_ReadSW5(&button_states_new);      // poll SW5 state
+    /* MAIN SilentGenerator PROGRAM LOOP */
+		
+    SG_BTN_ReadSW5(&button_states_new);      // poll SW5 (Main SW) state
     state = run_state(state);                // run state machine
 		HAL_Delay(SG_TIME_DEBOUNCE);             // wait for 10~50ms
 		button_states_old = button_states_new;   // refresh button states
-		
-		HAL_Delay(500);
-		
-		/** @todo work on the LTC3886 library */
-		asdf[0] = 65; asdf[1] = 65; asdf[2] = 65; asdf[3] = 65; asdf[4] = 65;
-		//LTC3886_Read8(&dcdc12VDriver, LTC3886_MFR_ID, &asdf);
-		pwmspeed1 = LTC3886_MFR_ID;
-		//HAL_I2C_Master_Transmit(&hi2c1, SG_ADDRESS_LTC3886, &pwmspeed1, 1, 10);
-		//HAL_I2C_Master_Receive(&hi2c1, SG_ADDRESS_LTC3886, &asdf[0], 5, 10);
-		HAL_I2C_Mem_Read(&hi2c1, SG_ADDRESS_LTC3886, LTC3886_MFR_ID, 1, asdf, 5, 10);
-		printf("MFR ID: %X %X %X %X %X \n", asdf[0], asdf[1], asdf[2], asdf[3], asdf[4]);
-		printf("string: %s %s %s\n", &asdf[1], &asdf[2], &asdf[3]);
-		
-		// Fan Controller Chip
-		float temp1 = 0.0f, temp2 = 0.0;
-		//MAX6615_ReadTemperature(&fanDriver, 1, &temp1);
-		//MAX6615_ReadTemperature(&fanDriver, 2, &temp2);
-		//MAX6615_PWM_SetPWM(&fanDriver, 1, pwmspeed);
-		//MAX6615_PWM_SetPWM(&fanDriver, 2, pwmspeed);
-		// MAX6615_Read8(&fanDriver, MAX6615_PWM_1_INSTA_DC, &pwmspeed1);
-		// MAX6615_Read8(&fanDriver, MAX6615_PWM_2_INSTA_DC, &pwmspeed2);
-		// printf("Temp 1: %.3f°C Temp 2: %.3f°C Fan 1: %d%% Fan 2: %d%%\n", temp1, temp2, (int)(pwmspeed1/2.4f), (int)(pwmspeed2/2.4));
-		//(pwmspeed >= 99) ? pwmspeed = 0 : (pwmspeed++);
-		
-		/*
-		uint8_t bytes[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-		HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_RESET);  // slave select LOW
-		uint8_t command = 0x9E;
-		HAL_SPI_Transmit(&hspi2, &command, 1, 10);
-		HAL_SPI_Receive(&hspi2, bytes, 3, 10);
-		HAL_GPIO_WritePin(SS_GPIO_Port, SS_Pin, GPIO_PIN_SET);  // slave select HIGH
-		printf("status: 0x%02X 0x%02X 0x%02X\n", bytes[0], bytes[1], bytes[2]);
-		*/
-		
-    //printf("Solar: %0.4f \tI_Out: %0.4f \tVint: %0.4f \tVUSB: %0.4f \tTemp: %0.4f \tVref: %0.4f \t(VBat: %0.4f)\n", \
-    ADC2Volt(ADC_Buf[0]), (ADC2Volt(ADC_Buf[1])/0.01f)/50.0f, ADC2Volt(ADC_Buf[2]), ADC2Volt(ADC_Buf[3]), \
-    ADC2Volt(ADC_Buf[4]), ADC2Volt(ADC_Buf[5]), ADC2Volt(ADC_Buf[6]));
-		
+
   }
   /* USER CODE END 3 */
-
 }
 
 /**
@@ -481,28 +424,26 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  RCC_OscInitTypeDef RCC_OscInitStruct;
-  RCC_ClkInitTypeDef RCC_ClkInitStruct;
-  RCC_PeriphCLKInitTypeDef PeriphClkInit;
-
-    /**Initializes the CPU, AHB and APB busses clocks 
-    */
+  /**Initializes the CPU, AHB and APB busses clocks 
+  */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = 16;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL3;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Initializes the CPU, AHB and APB busses clocks 
-    */
+  /**Initializes the CPU, AHB and APB busses clocks 
+  */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
@@ -512,9 +453,8 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_USART1
                               |RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_USART3
                               |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_ADC1;
@@ -527,29 +467,29 @@ void SystemClock_Config(void)
 
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure the Systick interrupt time 
-    */
-  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
-
-    /**Configure the Systick 
-    */
-  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
-
-  /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* ADC1 init function */
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_ADC1_Init(void)
 {
 
-  ADC_ChannelConfTypeDef sConfig;
+  /* USER CODE BEGIN ADC1_Init 0 */
 
-    /**Common config 
-    */
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+  /**Common config 
+  */
   hadc1.Instance = ADC1;
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
@@ -559,79 +499,86 @@ static void MX_ADC1_Init(void)
   hadc1.Init.NbrOfConversion = 7;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Regular Channel 
-    */
+  /**Configure Regular Channel 
+  */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Regular Channel 
-    */
+  /**Configure Regular Channel 
+  */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Regular Channel 
-    */
+  /**Configure Regular Channel 
+  */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Regular Channel 
-    */
+  /**Configure Regular Channel 
+  */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_4;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Regular Channel 
-    */
+  /**Configure Regular Channel 
+  */
   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
   sConfig.Rank = ADC_REGULAR_RANK_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Regular Channel 
-    */
+  /**Configure Regular Channel 
+  */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_6;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Regular Channel 
-    */
+  /**Configure Regular Channel 
+  */
   sConfig.Channel = ADC_CHANNEL_VBAT;
   sConfig.Rank = ADC_REGULAR_RANK_7;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
 
 }
 
-/* I2C1 init function */
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_I2C1_Init(void)
 {
 
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
   hi2c1.Init.Timing = 0x2000090E;
   hi2c1.Init.OwnAddress1 = 0;
@@ -643,29 +590,41 @@ static void MX_I2C1_Init(void)
   hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Analogue filter 
-    */
+  /**Configure Analogue filter 
+  */
   if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
-
-    /**Configure Digital filter 
-    */
+  /**Configure Digital filter 
+  */
   if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
 
 }
 
-/* SPI2 init function */
+/**
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_SPI2_Init(void)
 {
 
+  /* USER CODE BEGIN SPI2_Init 0 */
+
+  /* USER CODE END SPI2_Init 0 */
+
+  /* USER CODE BEGIN SPI2_Init 1 */
+
+  /* USER CODE END SPI2_Init 1 */
   /* SPI2 parameter configuration*/
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
@@ -683,15 +642,29 @@ static void MX_SPI2_Init(void)
   hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
   if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
+  /* USER CODE BEGIN SPI2_Init 2 */
+
+  /* USER CODE END SPI2_Init 2 */
 
 }
 
-/* USART1 init function */
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_USART1_UART_Init(void)
 {
 
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
   huart1.Init.BaudRate = 38400;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
@@ -704,15 +677,29 @@ static void MX_USART1_UART_Init(void)
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if (HAL_UART_Init(&huart1) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 
-/* USART2 init function */
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_USART2_UART_Init(void)
 {
 
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
   huart2.Init.BaudRate = 38400;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
@@ -725,15 +712,29 @@ static void MX_USART2_UART_Init(void)
   huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if (HAL_UART_Init(&huart2) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
 
 }
 
-/* USART3 init function */
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_USART3_UART_Init(void)
 {
 
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
   huart3.Init.BaudRate = 57600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
@@ -746,15 +747,29 @@ static void MX_USART3_UART_Init(void)
   huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if (HAL_UART_Init(&huart3) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
 
 }
 
-/* USB init function */
+/**
+  * @brief USB Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_USB_PCD_Init(void)
 {
 
+  /* USER CODE BEGIN USB_Init 0 */
+
+  /* USER CODE END USB_Init 0 */
+
+  /* USER CODE BEGIN USB_Init 1 */
+
+  /* USER CODE END USB_Init 1 */
   hpcd_USB_FS.Instance = USB;
   hpcd_USB_FS.Init.dev_endpoints = 8;
   hpcd_USB_FS.Init.speed = PCD_SPEED_FULL;
@@ -764,8 +779,11 @@ static void MX_USB_PCD_Init(void)
   hpcd_USB_FS.Init.battery_charging_enable = DISABLE;
   if (HAL_PCD_Init(&hpcd_USB_FS) != HAL_OK)
   {
-    _Error_Handler(__FILE__, __LINE__);
+    Error_Handler();
   }
+  /* USER CODE BEGIN USB_Init 2 */
+
+  /* USER CODE END USB_Init 2 */
 
 }
 
@@ -784,21 +802,14 @@ static void MX_DMA_Init(void)
 
 }
 
-/** Configure pins as 
-        * Analog 
-        * Input 
-        * Output
-        * EVENT_OUT
-        * EXTI
-     PA0   ------> SharedAnalog_PA0
-     PA1   ------> SharedAnalog_PA1
-     PA4   ------> SharedAnalog_PA4
-     PA5   ------> SharedAnalog_PA5
-*/
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
 static void MX_GPIO_Init(void)
 {
-
-  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -926,11 +937,9 @@ static void MX_GPIO_Init(void)
 
 /**
   * @brief  This function is executed in case of error occurrence.
-  * @param  file: The file name as string.
-  * @param  line: The line in file as a number.
   * @retval None
   */
-void _Error_Handler(char *file, int line)
+void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
@@ -948,7 +957,7 @@ void _Error_Handler(char *file, int line)
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t* file, uint32_t line)
+void assert_failed(char *file, uint32_t line)
 { 
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
@@ -956,13 +965,5 @@ void assert_failed(uint8_t* file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

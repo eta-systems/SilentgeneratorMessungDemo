@@ -336,7 +336,7 @@
               <MiscControls>--C99</MiscControls>
               <Define>USE_HAL_DRIVER,STM32F373xC</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;                 ../Drivers/STM32F3xx_HAL_Driver/Inc;                 ../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy;                 ../Drivers/CMSIS/Device/ST/STM32F3xx/Include;                 ../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;                  ../Drivers/STM32F3xx_HAL_Driver/Inc;                  ../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy;                  ../Drivers/CMSIS/Device/ST/STM32F3xx/Include;                  ../Drivers/CMSIS/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -411,9 +411,9 @@
               <FilePath>..\Src\max6615.c</FilePath>
             </File>
             <File>
-              <FileName>ringfs.c</FileName>
+              <FileName>graveyard.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Src\ringfs.c</FilePath>
+              <FilePath>.\graveyard.c</FilePath>
             </File>
             <File>
               <FileName>main.c</FileName>

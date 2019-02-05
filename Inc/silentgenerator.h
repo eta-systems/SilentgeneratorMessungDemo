@@ -18,16 +18,22 @@
 
 /** @todo get accurate battery voltage-chargelevel curves */
 #define SG_12V_BAT_LEV_VOLT_100  (14.340f)
-#define SG_12V_BAT_LEV_VOLT_90   (13.300f)
-#define SG_12V_BAT_LEV_VOLT_80   (13.270f)
-#define SG_12V_BAT_LEV_VOLT_70   (13.160f)
-#define SG_12V_BAT_LEV_VOLT_60   (13.130f)
-#define SG_12V_BAT_LEV_VOLT_50   (13.116f)
-#define SG_12V_BAT_LEV_VOLT_40   (13.104f)
-#define SG_12V_BAT_LEV_VOLT_30   (12.996f)
-#define SG_12V_BAT_LEV_VOLT_20   (12.866f)  // never go below this voltage
-#define SG_12V_BAT_LEV_VOLT_10   (12.730f)  //
-#define SG_12V_BAT_LEV_VOLT_0     (9.200f)
+#define SG_12V_BAT_LEV_VOLT_090  (13.300f)
+#define SG_12V_BAT_LEV_VOLT_080  (13.270f)
+#define SG_12V_BAT_LEV_VOLT_070  (13.160f)
+#define SG_12V_BAT_LEV_VOLT_060  (13.130f)
+#define SG_12V_BAT_LEV_VOLT_050  (13.116f)
+#define SG_12V_BAT_LEV_VOLT_040  (13.104f)
+#define SG_12V_BAT_LEV_VOLT_030  (12.996f)
+#define SG_12V_BAT_LEV_VOLT_020  (12.866f)  // never go below this voltage
+#define SG_12V_BAT_LEV_VOLT_010  (12.730f)  //
+#define SG_12V_BAT_LEV_VOLT_000  (9.200f)
+
+#define SG_BAT_12V_SOC_VOLT_100  (12.8f)
+#define SG_BAT_12V_SOC_VOLT_000  (11.8f)
+
+#define SG_BAT_24V_SOC_VOLT_100  (2*SG_BAT_12V_SOC_VOLT_100)
+#define SG_BAT_24V_SOC_VOLT_000  (2*SG_BAT_12V_SOC_VOLT_000)
 
 #define SG_HUI_LED_BRIGHT_ON    12
 #define SG_BAT_LED_BRIGHT_ON    10
@@ -251,7 +257,7 @@ void     SG_LED_SetAll         (uint8_t brightness);
 void     SG_BAT_LED_SetBar     (uint8_t percent, uint8_t bright_on, uint8_t bright_off);
 void     SG_BAT_LED_SetDot     (uint8_t percent, uint8_t bright_on, uint8_t bright_off);
 void     SG_BAT_LED_Update     (uint32_t adc, uint8_t fullbar);
-uint16_t SG_BAT_LED_GetLevel   (float volt);
+uint16_t SG_Battery_StateOfCharge   (float volt);
 float    SG_ADC_GetVint        (uint32_t adc);
 
 /**
